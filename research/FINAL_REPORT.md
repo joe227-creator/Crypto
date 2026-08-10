@@ -48,8 +48,7 @@ Research_score = mean_rolling_6m_return
 ## Environment And Reproduction
 
 - WSL2 Ubuntu 22.04, CPU-only local validation.
-- Main implementation commit: recorded by final Git commit after session-purge
-  regression coverage; public `main` remains source of truth.
+- Main implementation commit: `e888298f61a3c6d4c8db2f6d53a30c7b544fbcd8`.
 - Root initial local reproduction commit: `5b3340fdfd1e6b4d7ec0092c4c7a29ff6fda278c`.
 - Data manifest snapshot: `data/processed/manifest.json`, built 2026-08-10;
   market rows 6,288, on-chain rows 6,286, market end 2026-08-10.
