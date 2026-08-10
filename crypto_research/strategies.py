@@ -11,6 +11,7 @@ from .models import walk_forward_ar, walk_forward_ridge
 
 
 ASSETS = ("BTC", "ETH")
+FIXED_SIGNAL_THRESHOLD = 0.0
 
 
 def _market_wide(market: pd.DataFrame) -> pd.DataFrame:
@@ -118,13 +119,12 @@ def build_targets(
             dates,
             config,
             alpha=float(params.get("alpha", 10.0)),
-            threshold=float(params.get("threshold", 0.0)),
             use_onchain=bool(params.get("use_onchain", True)),
         )
-        raw = _equal_positive(predictions, threshold=float(params.get("threshold", 0.0)))
+        raw = _equal_positive(predictions, threshold=FIXED_SIGNAL_THRESHOLD)
     elif mode == "ar":
         predictions = walk_forward_ar(features, dates, config, horizon=int(params.get("horizon", 5)))
-        raw = _equal_positive(predictions, threshold=float(params.get("threshold", 0.0)))
+        raw = _equal_positive(predictions, threshold=FIXED_SIGNAL_THRESHOLD)
     else:
         raise ValueError(f"Unknown strategy mode: {mode}")
     targets = _shift_to_next_open(raw, dates)

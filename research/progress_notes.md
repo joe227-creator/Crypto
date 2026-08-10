@@ -20,11 +20,11 @@ walk-forward execution; arXiv:2606.09478 finds weak state-dependent return
 predictability and value in regime/volatility variables. Bush varies one decision:
 feature information, not model family, score, labels, or costs.
 
-Technical-only Ridge child local smoke: score `-0.4255250`, validation
-`-0.0967282`, test `-0.3273902`, turnover `4.8659422`, Optuna 8 trials.
+Technical-only Ridge smoke values invalidated: prior Optuna tuned entry
+threshold, which violates fixed protocol.
 
-Technical plus lagged on-chain Ridge child local smoke: score `-0.3985646`,
-validation `0.0223075`, test `-0.2266824`, turnover `4.0594177`, Optuna 8 trials.
+Technical plus lagged on-chain Ridge smoke requires recomputation with fixed zero
+entry threshold and alpha-only Optuna.
 
 On-chain child is locally less bad but not promoted. Neither child has an orx
 run ID because same billing blocker prevented execution. Local smoke does not

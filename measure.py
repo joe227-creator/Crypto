@@ -115,8 +115,7 @@ def _run_optuna(
     def objective(trial: Any) -> float:
         params = {
             "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
-            "threshold": trial.suggest_float("threshold", -0.01, 0.02),
-            "use_onchain": True,
+            "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
         }
         metrics, equity, trades, _ = _score_one("ridge", market, features, feature_columns, config, baseline_turnover, params)
         validation = metrics["validation"]

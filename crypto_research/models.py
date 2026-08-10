@@ -31,7 +31,6 @@ def walk_forward_ridge(
     signal_dates: pd.DatetimeIndex,
     config: dict[str, Any],
     alpha: float,
-    threshold: float,
     use_onchain: bool,
 ) -> pd.DataFrame:
     """Predict each asset using only labels ending before current signal date."""
@@ -67,7 +66,7 @@ def walk_forward_ridge(
             if not np.isfinite(x_now).all():
                 continue
             prediction = float(_predict(model, x_now)[0])
-            rows.append({"date": signal_date, "asset": asset, "prediction": prediction, "positive": prediction > threshold})
+            rows.append({"date": signal_date, "asset": asset, "prediction": prediction, "positive": prediction > 0.0})
     return pd.DataFrame(rows)
 
 

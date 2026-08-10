@@ -23,6 +23,7 @@ perpetual trade legs.
   as-of join, forward-fill limited to three days.
 - Signal timing: form at daily close, execute target at next daily open.
 - Costs: 10 bps fee plus 5 bps slippage per side. Costs never set to zero.
+- Signal threshold: fixed at `0.0`; Optuna tunes Ridge regularization only.
 - Labels: five-session forward simple return less fixed round-trip cost for
   classical models. Labels are used only when label end date is before the
   signal date minus one-session embargo.
@@ -106,12 +107,12 @@ cannot trigger promotion.
 
 | Direction | Full score | Validation score | Test score | Turnover | Optuna best |
 |---|---:|---:|---:|---:|---|
-| Ridge technical only | -0.4255250 | -0.0967282 | -0.3273902 | 4.8659422 | alpha 0.1527106, threshold 0.0168227 |
-| Ridge plus lagged on-chain | -0.3985646 | 0.0223075 | -0.2266824 | 4.0594177 | alpha 0.0620247, threshold 0.0173515 |
+| Ridge technical only | invalidated | invalidated | invalidated | invalidated | threshold tuning was fixed-protocol drift |
+| Ridge plus lagged on-chain | pending recomputation | pending recomputation | pending recomputation | pending recomputation | alpha-only Optuna after threshold lock |
 
-On-chain enrichment improves local smoke score relative to technical-only but
-both remain materially below frozen 50/50 score `0.1115835`, and neither has
-orx evidence or robustness audit. No promotion made.
+Prior smoke values were invalidated after detecting threshold tuning against the
+fixed protocol. Recompute both siblings with zero entry threshold before any
+comparison. Neither has orx evidence or robustness audit. No promotion made.
 
 ## Robustness And Leakage
 

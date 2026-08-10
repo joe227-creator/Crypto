@@ -52,9 +52,10 @@ so no close or on-chain observation from the future can enter a position.
 
 1. Stage 0: cash, buy-and-hold BTC/ETH, 50/50 buy-and-hold, SMA crossover,
    volatility-scaled momentum, and 12-1 momentum.
-2. Stage 1: deterministic Ridge walk-forward model with lagged returns,
+2. Stage 1: deterministic Ridge walk-forward model with fixed zero signal
+   threshold, lagged returns,
    volatility, range, volume, and lagged on-chain z-scores; optional Optuna
-   tuning is validation-only.
+   tuning is validation-only and restricted to Ridge regularization.
 3. Stage 2: causal autoregressive return forecast.
 4. Stage 3: optional TimesFM and Kronos adapters. They remain disabled unless
    their public dependencies and checkpoints are available; unavailable
