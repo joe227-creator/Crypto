@@ -34,6 +34,19 @@ promotion evidence.
 
 Session-based embargo regression passed. Fixed smoke values remained unchanged.
 
+## Stage 2 Screening
+
+Fresh literature review covered arXiv:2602.10785 and arXiv:2606.27100. The first
+supports strict double out-of-sample walk-forward testing with conservative
+costs; the second cautions that daily financial return predictability is weak
+and TSFM forecast gains do not imply trading alpha.
+
+Existing causal recursive AR implementation was screened locally at horizons 1,
+5, and 21. Scores were `-2.6286336`, `-1.7015701`, and `-0.7378930`; horizon 21
+was least bad but remained below frozen baseline `0.1115835`. Screening is not an
+orx answer, so no node was created, no direction was promoted, and no parent was
+chosen for a new stacked bush.
+
 ## Next Tick After Credits
 
 1. Run root `019fec2a-3c90-74f8-a1c6-fddf122b3d4c` sequentially through orx.
@@ -41,3 +54,15 @@ Session-based embargo regression passed. Fixed smoke values remained unchanged.
 3. Run technical child, then on-chain child, one at a time; read each artifact.
 4. Promote only if full score and robustness-adjusted test evidence beats the
    frozen reference. Do not promote from local smoke values.
+
+## Open Directions After Credit Restoration
+
+1. Classical ARIMA/ETS return forecasts, one model-family decision, with the
+   same fixed scoring and execution contract.
+2. TimesFM zero-shot point/quantile forecast adapter, only after public package
+   and checkpoint availability is verified.
+3. Kronos zero-shot OHLCV forecast adapter, only after runtime dependency and
+   public checkpoint availability is verified.
+
+Do not create these as children until root has an orx answer and a confirmed
+parent. Current server project still has no compute credit.

@@ -116,6 +116,24 @@ On-chain enrichment is less negative locally but both candidates remain far
 below frozen 50/50 score `0.1115835`, with high turnover penalties. Neither has
 orx evidence or robustness audit. No promotion made.
 
+## Stage 2 Local Screening
+
+Stage 2 literature review used arXiv:2602.10785, which emphasizes double
+out-of-sample walk-forward selection with conservative fees, and
+arXiv:2606.27100, which cautions that forecast accuracy gains in noisy financial
+returns do not establish economic alpha. Existing causal recursive AR code was
+screened locally before creating a tree node:
+
+| Horizon | Full score | Validation | Test | Turnover | Verdict |
+|---:|---:|---:|---:|---:|---|
+| 1 | -2.6286336 | -1.1072398 | -1.5539944 | 25.7258 | reject |
+| 5 | -1.7015701 | -0.6832194 | -0.8427689 | 18.3135 | reject |
+| 21 | -0.7378930 | -0.4975945 | -0.4542211 | 8.3825 | least bad, reject |
+
+AR horizon 21 is still below frozen baseline `0.1115835`. No Stage 2 orx node
+was created because root and existing Stage 1 siblings have no orx answers; a
+new child without confirmed parent would violate stacked-bush protocol.
+
 ## Robustness And Leakage
 
 - Seeds configured: `11, 22, 33, 44, 55`. Stage 0 is deterministic, so seed
@@ -125,7 +143,8 @@ orx evidence or robustness audit. No promotion made.
   test 7 for baseline and Stage 1 smoke.
 - Regime slices, parameter sensitivity around Optuna optima, per-seed curves,
   feature importance stability, and formal walk-forward promotion audit remain
-  unmeasured because no orx run reached execution.
+  unmeasured because no orx run reached execution. Stage 2 AR screening is
+  local-only and cannot substitute for those checks.
 - Leakage guards present: next-open execution, as-of on-chain join with lag,
   train-only feature scaling, label-end embargo, causal expanding fits, and
   signal/execution audit artifact.

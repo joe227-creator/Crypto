@@ -47,3 +47,16 @@ predictability and value in volatility/regime variables, with implementation
 controls required. The first bush therefore varies only feature information:
 technical Ridge versus technical-plus-lagged-on-chain Ridge. No branch changes
 labels, costs, thresholds in the fixed score, split dates, or run command.
+
+## Stage 2 Screening And Tree Rule
+
+arXiv:2602.10785 supports double out-of-sample walk-forward evaluation with
+conservative fees. arXiv:2606.27100 cautions that TSFM forecast rankings do not
+automatically imply trading alpha. Existing recursive AR horizon screening was
+performed locally only; all horizons lost to frozen baseline. No Stage 2 child
+was created because root and Stage 1 siblings have no orx answers. Stacked-bush
+depth requires confirmed parent winner; local smoke cannot establish one.
+
+Open directions remain ARIMA/ETS, TimesFM zero-shot, and Kronos zero-shot. They
+are blocked by absent orx compute credits and, for foundation models, missing
+runtime dependencies/checkpoints.
