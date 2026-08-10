@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.openresearch/
+data/raw/*.json
+data/raw/*.csv
+data/processed/*.csv
+data/processed/*.json
+data/processed/*.parquet
+research/studies/
+*.egg-info/

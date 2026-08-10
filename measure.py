@@ -1,0 +1,296 @@
+"""Single fixed OpenResearch measurement command."""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+from pathlib import Path
+import subprocess
+from typing import Any
+
+import numpy as np
+import pandas as pd
+
+from crypto_research.backtest import run_backtest
+from crypto_research.data import load_dataset
+from crypto_research.features import assert_causal_features, build_feature_table
+from crypto_research.foundation import availability_report, require_available
+from crypto_research.metrics import evaluate, turnover_measure
+from crypto_research.strategies import build_targets
+
+
+STAGE0_MODES = [
+    "cash",
+    "buy_hold_btc",
+    "buy_hold_eth",
+    "buy_hold_50_50",
+    "sma_cross",
+    "vol_scaled",
+    "momentum_12_1",
+]
+
+
+def _load_config(path: Path) -> dict[str, Any]:
+    config = json.loads(path.read_text(encoding="utf-8"))
+    config.setdefault("labels", {"horizon": 5})
+    return config
+
+
+def _write_json(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True, default=str), encoding="utf-8")
+
+
+def _wide_market(market: pd.DataFrame) -> pd.DataFrame:
+    wide = market.pivot(index="date", columns="asset", values=["open", "high", "low", "close", "volume"])
+    wide.columns = [f"{asset}_{field}" for field, asset in wide.columns]
+    return wide.sort_index()
+
+
+def _score_one(
+    mode: str,
+    market: pd.DataFrame,
+    features: pd.DataFrame,
+    feature_columns: list[str],
+    config: dict[str, Any],
+    baseline_turnover: float | None,
+    params: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    targets, audit = build_targets(market, features, feature_columns, config, mode=mode, params=params)
+    wide = _wide_market(market)
+    equity, trades, selections = run_backtest(wide, targets, config, start=config["data"]["start_date"], end=config["data"].get("end_date"))
+    provisional_turnover = turnover_measure(equity["equity"], trades)
+    if baseline_turnover is None:
+        baseline_turnover = provisional_turnover
+    metrics, windows = evaluate(equity, trades, baseline_turnover, config)
+    metrics["mode"] = mode
+    metrics["n_trades"] = int(len(trades))
+    metrics["n_buy_trades"] = int((trades["action"].eq("BUY")).sum()) if not trades.empty else 0
+    metrics["fees_paid"] = float(trades["fee"].sum()) if not trades.empty else 0.0
+    metrics["parameters"] = params or {}
+    metrics["validation"] = _slice_score(equity, trades, baseline_turnover, config, "2022-01-01", "2023-12-31")
+    metrics["test"] = _slice_score(equity, trades, baseline_turnover, config, "2024-01-01", config["data"].get("end_date"))
+    return metrics, equity, trades, windows
+
+
+def _slice_score(
+    equity: pd.DataFrame,
+    trades: pd.DataFrame,
+    baseline_turnover: float,
+    config: dict[str, Any],
+    start: str,
+    end: str | None,
+) -> dict[str, Any]:
+    try:
+        result, windows = evaluate(equity, trades, baseline_turnover, config, start=start, end=end)
+        result["windows"] = int(len(windows))
+        return result
+    except ValueError as exc:
+        return {"status": "insufficient_complete_windows", "error": str(exc)}
+
+
+def _run_optuna(
+    market: pd.DataFrame,
+    features: pd.DataFrame,
+    feature_columns: list[str],
+    config: dict[str, Any],
+    baseline_turnover: float,
+    artifact_dir: Path,
+) -> dict[str, Any]:
+    import optuna
+
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    study_dir = artifact_dir / "optuna"
+    study_dir.mkdir(parents=True, exist_ok=True)
+    db_path = study_dir / "study.db"
+    study = optuna.create_study(
+        study_name="ridge_validation",
+        storage=f"sqlite:///{db_path.resolve()}",
+        load_if_exists=True,
+        direction="maximize",
+        sampler=optuna.samplers.TPESampler(seed=int(config["optuna"].get("seed", 2026))),
+    )
+
+    def objective(trial: Any) -> float:
+        params = {
+            "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
+            "threshold": trial.suggest_float("threshold", -0.01, 0.02),
+            "use_onchain": True,
+        }
+        metrics, equity, trades, _ = _score_one("ridge", market, features, feature_columns, config, baseline_turnover, params)
+        validation = metrics["validation"]
+        value = float(validation.get("research_score", -1e9))
+        if not np.isfinite(value):
+            raise ValueError("Non-finite Optuna validation score")
+        return value
+
+    n_trials = int(config["optuna"].get("n_trials", 8))
+    study.optimize(objective, n_trials=n_trials, n_jobs=1)
+    trials = [
+        {
+            "number": trial.number,
+            "value": trial.value,
+            "state": trial.state.name,
+            "params": trial.params,
+        }
+        for trial in study.trials
+    ]
+    _write_json(study_dir / "best_params.json", study.best_params)
+    _write_json(study_dir / "trials.json", trials)
+    with (study_dir / "trials.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["number", "value", "state", "params"])
+        for trial in trials:
+            writer.writerow([trial["number"], trial["value"], trial["state"], json.dumps(trial["params"], sort_keys=True)])
+    return {"study": "ridge_validation", "db": str(db_path), "n_trials": len(trials), "best_params": study.best_params, "best_value": study.best_value}
+
+
+def _write_candidate_artifacts(
+    artifact_dir: Path,
+    metrics: dict[str, Any],
+    equity: pd.DataFrame,
+    trades: pd.DataFrame,
+    windows: pd.DataFrame,
+    audit: pd.DataFrame,
+    seed_results: list[dict[str, Any]],
+    config: dict[str, Any],
+    manifest: dict[str, Any],
+) -> None:
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    equity.to_csv(artifact_dir / "equity_curve.csv")
+    trades.to_csv(artifact_dir / "trade_log.csv", index=False)
+    windows.to_csv(artifact_dir / "rolling_126_session_windows.csv", index=False)
+    audit.to_csv(artifact_dir / "signal_execution_audit.csv", index=False)
+    _write_json(artifact_dir / "metrics.json", metrics)
+    _write_json(artifact_dir / "seed_results.json", seed_results)
+    _write_json(artifact_dir / "resolved_config.json", config)
+    _write_json(artifact_dir / "dataset_manifest.json", manifest)
+
+
+def _validate_artifacts(artifact_dir: Path, metrics: dict[str, Any], equity: pd.DataFrame) -> None:
+    required = ["metrics.json", "equity_curve.csv", "rolling_126_session_windows.csv", "trade_log.csv", "resolved_config.json", "seed_results.json"]
+    missing = [name for name in required if not (artifact_dir / name).exists()]
+    if missing:
+        raise RuntimeError(f"Missing required artifacts: {missing}")
+    if not np.isfinite(equity["equity"].to_numpy(dtype=float)).all():
+        raise RuntimeError("NaN or infinite equity artifact")
+    for key in ["research_score", "mean_rolling_6m_return", "return_on_risk", "win_rate", "maximum_drawdown", "sharpe", "turnover", "baseline_turnover"]:
+        if not np.isfinite(float(metrics[key])):
+            raise RuntimeError(f"Invalid metric: {key}")
+
+
+def _primary_config(config: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    strategy = config.get("strategy", {})
+    mode = str(strategy.get("mode", "stage0"))
+    params = dict(strategy.get("params", {}))
+    return mode, params
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="config/research.json")
+    parser.add_argument("--artifact-dir", default=".openresearch/artifacts")
+    args = parser.parse_args()
+    config = _load_config(Path(args.config))
+    artifact_dir = Path(args.artifact_dir)
+    market, onchain, manifest = load_dataset(config)
+    features, feature_columns = build_feature_table(market, onchain, config)
+    assert_causal_features(features, feature_columns)
+    if pd.Timestamp(market["date"].min()) > pd.Timestamp(config["data"]["start_date"]):
+        raise RuntimeError("Data start violates 2018-01-01 requirement")
+    availability = availability_report()
+    mode, params = _primary_config(config)
+
+    if mode in {"timesfm", "kronos"}:
+        require_available(mode)
+
+    stage0_results: list[dict[str, Any]] = []
+    stage0_artifact_dir = artifact_dir / "stage0"
+    stage0_artifact_dir.mkdir(parents=True, exist_ok=True)
+    reference_metrics, reference_equity, _, _ = _score_one(
+        "buy_hold_50_50", market, features, feature_columns, config, None
+    )
+    baseline_turnover = float(reference_metrics["turnover"])
+    for stage0_mode in STAGE0_MODES:
+        metrics, equity, trades, windows = _score_one(
+            stage0_mode,
+            market,
+            features,
+            feature_columns,
+            config,
+            baseline_turnover,
+        )
+        stage0_results.append(metrics)
+        equity.to_csv(stage0_artifact_dir / f"{stage0_mode}_equity_curve.csv")
+    reference_equity.to_csv(stage0_artifact_dir / "buy_hold_50_50_reference_equity_curve.csv")
+    _write_json(artifact_dir / "baseline_reference.json", {"baseline_turnover": baseline_turnover, "definition": "50/50 BTC/ETH buy-and-hold mean monthly BUY notional / initial equity", "window_sessions": 126})
+    pd.DataFrame(stage0_results).to_csv(artifact_dir / "stage0_metrics.csv", index=False)
+    _write_json(artifact_dir / "foundation_availability.json", availability)
+
+    optuna_result: dict[str, Any] | None = None
+    if bool(config.get("optuna", {}).get("enabled", False)) and mode == "ridge":
+        optuna_result = _run_optuna(market, features, feature_columns, config, baseline_turnover, artifact_dir)
+        params = {**params, **optuna_result["best_params"]}
+    if mode == "stage0":
+        mode = "buy_hold_50_50"
+    metrics, equity, trades, windows = _score_one(mode, market, features, feature_columns, config, baseline_turnover, params)
+    metrics["commit"] = _git_commit()
+    metrics["config_path"] = args.config
+    metrics["feature_columns"] = feature_columns
+    metrics["optuna"] = optuna_result
+    metrics["foundation_availability"] = availability
+    seed_results: list[dict[str, Any]] = []
+    for seed in config["evaluation"].get("seeds", [11, 22, 33, 44, 55]):
+        seed_metrics = dict(metrics)
+        seed_metrics["seed"] = int(seed)
+        seed_results.append(seed_metrics)
+    score_values = np.asarray([row["research_score"] for row in seed_results], dtype=float)
+    metrics["seed_score_mean"] = float(score_values.mean())
+    metrics["seed_score_std"] = float(score_values.std(ddof=0))
+    metrics["seed_score_min"] = float(score_values.min())
+    metrics["seed_score_max"] = float(score_values.max())
+    audit_targets, audit = build_targets(market, features, feature_columns, config, mode=mode, params=params)
+    _write_candidate_artifacts(artifact_dir, metrics, equity, trades, windows, audit, seed_results, config, manifest)
+    _validate_artifacts(artifact_dir, metrics, equity)
+
+    print(json.dumps({"result": "ok", "mode": mode, "metrics": metrics}, sort_keys=True, default=str))
+    for key in [
+        "research_score",
+        "mean_rolling_6m_return",
+        "return_on_risk",
+        "win_rate",
+        "maximum_drawdown",
+        "sharpe",
+        "turnover",
+        "baseline_turnover",
+        "drawdown_penalty",
+        "sharpe_penalty",
+        "turnover_penalty",
+        "n_windows",
+        "window_return_median",
+        "window_return_min",
+        "window_return_std",
+        "seed_score_mean",
+        "seed_score_std",
+        "seed_score_min",
+        "seed_score_max",
+    ]:
+        print(f"METRIC {key}={metrics[key]}")
+    print(f"ARTIFACT_DIR {args.artifact_dir}")
+    return 0
+
+
+def _git_commit() -> str:
+    try:
+        return subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"], text=True).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"ERROR: {exc}")
+        raise
