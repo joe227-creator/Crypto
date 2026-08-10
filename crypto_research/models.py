@@ -43,6 +43,7 @@ def walk_forward_ridge(
     rows: list[dict[str, Any]] = []
     for asset in config["data"]["assets"]:
         asset_rows = features[features["asset"].eq(asset)].sort_values("date").copy()
+        asset_dates = pd.DatetimeIndex(asset_rows["date"])
         model: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
         last_fit_index = -refit_sessions
         for signal_index, signal_date in enumerate(signal_dates):
@@ -50,10 +51,15 @@ def walk_forward_ridge(
             if current.empty:
                 continue
             if signal_index - last_fit_index >= refit_sessions or model is None:
+                asset_position = asset_dates.get_loc(signal_date)
+                cutoff_position = asset_position - embargo
+                if cutoff_position <= 0:
+                    continue
+                label_cutoff = asset_dates[cutoff_position]
                 train = asset_rows[
                     (asset_rows["date"] >= train_start)
                     & (asset_rows["date"] < signal_date)
-                    & (asset_rows["label_end_date"] < signal_date - pd.Timedelta(days=embargo))
+                    & (asset_rows["label_end_date"] < label_cutoff)
                 ].dropna(subset=[*selected_features, "label"])
                 if train["date"].nunique() >= min_train_days:
                     x = train[selected_features].to_numpy(dtype=float)

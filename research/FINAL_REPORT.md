@@ -48,12 +48,14 @@ Research_score = mean_rolling_6m_return
 ## Environment And Reproduction
 
 - WSL2 Ubuntu 22.04, CPU-only local validation.
-- Main implementation commit: `0202dd4f295d09e883e7614443a9da5825f052cc`.
+- Main implementation commit: recorded by final Git commit after session-purge
+  regression coverage; public `main` remains source of truth.
 - Root initial local reproduction commit: `5b3340fdfd1e6b4d7ec0092c4c7a29ff6fda278c`.
 - Data manifest snapshot: `data/processed/manifest.json`, built 2026-08-10;
   market rows 6,288, on-chain rows 6,286, market end 2026-08-10.
 - Exact command: `bash measure.sh`.
-- Tests: `python -m pytest -q` returned `7 passed`.
+- Tests: project venv `python -m pytest -q` returned `8 passed` after session
+  embargo regression coverage.
 - Baseline command also emits `.openresearch/artifacts/EVAL.md`, metrics JSON,
   equity curve, trade log, 126-session windows, signal/execution audit, seed
   results, resolved config, and dataset manifest.
@@ -93,9 +95,9 @@ OpenResearch IDs:
 
 | Experiment | ID | Branch | Commit | Orx run |
 |---|---|---|---|---|
-| Stage 0 Baseline | `019fec2a-3c90-74f8-a1c6-fddf122b3d4c` | `orx/stage-0-baseline-30c6d37a` | root branch pending sync | none |
-| Stage 1 Ridge technical features | `019fec2f-a592-70ab-9915-1612dbfb4bbf` | `orx/stage-1-ridge-technical-features-104f71c6` | `68f70f9` | none |
-| Stage 1 Ridge plus on-chain | `019fec2f-aa59-7ead-be05-a8b7b6dc81c0` | `orx/stage-1-ridge-plus-on-chain-e5162886` | `2fe5010` | none |
+| Stage 0 Baseline | `019fec2a-3c90-74f8-a1c6-fddf122b3d4c` | `orx/stage-0-baseline-30c6d37a` | `d5cf46b` | none |
+| Stage 1 Ridge technical features | `019fec2f-a592-70ab-9915-1612dbfb4bbf` | `orx/stage-1-ridge-technical-features-104f71c6` | `9dae8cd` | none |
+| Stage 1 Ridge plus on-chain | `019fec2f-aa59-7ead-be05-a8b7b6dc81c0` | `orx/stage-1-ridge-plus-on-chain-e5162886` | `13ddaf3` | none |
 
 All nodes inherit fixed `bash measure.sh`. Stage 1 children vary only feature
 information and run eight sequential Optuna trials on validation data.
@@ -107,12 +109,13 @@ cannot trigger promotion.
 
 | Direction | Full score | Validation score | Test score | Turnover | Optuna best |
 |---|---:|---:|---:|---:|---|
-| Ridge technical only | invalidated | invalidated | invalidated | invalidated | threshold tuning was fixed-protocol drift |
-| Ridge plus lagged on-chain | pending recomputation | pending recomputation | pending recomputation | pending recomputation | alpha-only Optuna after threshold lock |
+| Ridge technical only | -1.1859575 | -0.6547601 | -1.0324355 | 12.4341234 | alpha 89.1665528 |
+| Ridge plus lagged on-chain | -1.0763066 | -0.6487563 | -0.5311196 | 11.4842383 | alpha 89.1665528 |
 
-Prior smoke values were invalidated after detecting threshold tuning against the
-fixed protocol. Recompute both siblings with zero entry threshold before any
-comparison. Neither has orx evidence or robustness audit. No promotion made.
+Fixed-protocol recomputation uses zero entry threshold and alpha-only Optuna.
+On-chain enrichment is less negative locally but both candidates remain far
+below frozen 50/50 score `0.1115835`, with high turnover penalties. Neither has
+orx evidence or robustness audit. No promotion made.
 
 ## Robustness And Leakage
 
@@ -128,8 +131,8 @@ comparison. Neither has orx evidence or robustness audit. No promotion made.
   train-only feature scaling, label-end embargo, causal expanding fits, and
   signal/execution audit artifact.
 - Regression checks cover score formula, incomplete windows, positive equity,
-  fee charging, short rejection, cash-sleeve preservation, and on-chain date
-  alignment.
+  fee charging, short rejection, cash-sleeve preservation, on-chain date
+  alignment, and session-based embargo across weekends.
 
 ## Foundation Models
 

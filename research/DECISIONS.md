@@ -18,6 +18,9 @@ side. No model or Optuna trial can change these values.
 Signal threshold is fixed at `0.0`. Optuna tunes Ridge regularization only;
 threshold, labels, costs, score weights, and evaluation partitions remain fixed.
 
+Embargo is session-based, not calendar-day-based: one-session purge excludes
+the immediately preceding market session even across weekends.
+
 Dependency bounds keep pandas below version 3 because pandas 3 changes default
 datetime resolution and can make `merge_asof` reject otherwise identical daily
 keys. Feature join keys are explicitly normalized to `datetime64[ns]` as a
