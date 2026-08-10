@@ -166,10 +166,40 @@ def _write_candidate_artifacts(
     _write_json(artifact_dir / "seed_results.json", seed_results)
     _write_json(artifact_dir / "resolved_config.json", config)
     _write_json(artifact_dir / "dataset_manifest.json", manifest)
+    score_keys = [
+        "research_score",
+        "mean_rolling_6m_return",
+        "return_on_risk",
+        "win_rate",
+        "maximum_drawdown",
+        "sharpe",
+        "turnover",
+        "baseline_turnover",
+        "drawdown_penalty",
+        "sharpe_penalty",
+        "turnover_penalty",
+    ]
+    eval_lines = [
+        "# Evaluation",
+        "",
+        f"mode: {metrics.get('mode', 'unknown')}",
+        f"commit: {metrics.get('commit', 'unknown')}",
+        "",
+    ]
+    eval_lines.extend(f"{key}: {metrics[key]}" for key in score_keys)
+    eval_lines.extend(
+        [
+            "",
+            f"windows: {metrics.get('n_windows', 0)}",
+            f"start_date: {metrics.get('start_date', '')}",
+            f"end_date: {metrics.get('end_date', '')}",
+        ]
+    )
+    (artifact_dir / "EVAL.md").write_text("\n".join(eval_lines) + "\n", encoding="utf-8")
 
 
 def _validate_artifacts(artifact_dir: Path, metrics: dict[str, Any], equity: pd.DataFrame) -> None:
-    required = ["metrics.json", "equity_curve.csv", "rolling_126_session_windows.csv", "trade_log.csv", "resolved_config.json", "seed_results.json"]
+    required = ["EVAL.md", "metrics.json", "equity_curve.csv", "rolling_126_session_windows.csv", "trade_log.csv", "resolved_config.json", "seed_results.json"]
     missing = [name for name in required if not (artifact_dir / name).exists()]
     if missing:
         raise RuntimeError(f"Missing required artifacts: {missing}")

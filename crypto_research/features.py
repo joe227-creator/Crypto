@@ -37,7 +37,7 @@ def _asset_features(
     onchain_ffill_limit: int,
 ) -> pd.DataFrame:
     price = market[market["asset"].eq(asset)].sort_values("date").copy()
-    price["date"] = pd.to_datetime(price["date"]).dt.normalize()
+    price["date"] = pd.to_datetime(price["date"]).dt.normalize().astype("datetime64[ns]")
     price["log_close"] = np.log(price["close"])
     returns = price["log_close"].diff()
     price["ret_1"] = returns
@@ -51,7 +51,7 @@ def _asset_features(
     price["volume_z_20"] = _zscore(np.log1p(price["volume"]), 20)
 
     chain = onchain[onchain["asset"].eq(asset)].sort_values("date").copy()
-    chain["date"] = pd.to_datetime(chain["date"]).dt.normalize()
+    chain["date"] = pd.to_datetime(chain["date"]).dt.normalize().astype("datetime64[ns]")
     chain["available_date"] = chain["date"] + pd.Timedelta(days=1)
     metric_columns = [column for column in chain.columns if column not in {"date", "asset", "available_date"}]
     if metric_columns:
@@ -101,8 +101,8 @@ def build_feature_table(
     missing = [column for column in BASE_FEATURES if column not in features]
     if missing:
         raise ValueError(f"Feature construction missing columns: {missing}")
-    features["date"] = pd.to_datetime(features["date"]).dt.normalize()
-    features["label_end_date"] = pd.to_datetime(features["label_end_date"])
+    features["date"] = pd.to_datetime(features["date"]).dt.normalize().astype("datetime64[ns]")
+    features["label_end_date"] = pd.to_datetime(features["label_end_date"]).astype("datetime64[ns]")
     features.attrs["feature_columns"] = feature_columns
     features.attrs["label_horizon"] = horizon
     features.attrs["embargo_sessions"] = int(evaluation.get("embargo_sessions", 1))

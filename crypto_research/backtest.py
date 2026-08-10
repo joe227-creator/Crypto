@@ -93,7 +93,9 @@ def run_backtest(
                     weight = target_values[asset]
                     if weight <= 0.0:
                         continue
-                    allocation = investable_cash * weight / total_target
+                    # Preserve residual cash when target asset weights sum below
+                    # one; never renormalize a cash-aware target to 100% invested.
+                    allocation = investable_cash * weight
                     mid = _price(market, date, asset, "open")
                     if not np.isfinite(mid):
                         raise ValueError(f"Missing open for buy {asset} {date.date()}")

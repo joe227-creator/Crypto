@@ -31,3 +31,10 @@ def test_backtest_rejects_short_target() -> None:
     targets = pd.DataFrame({"BTC": [-0.1], "ETH": [0.0]}, index=[pd.Timestamp("2020-01-02")])
     with pytest.raises(ValueError, match="long-only"):
         run_backtest(_market(), targets, _config())
+
+
+def test_backtest_preserves_cash_sleeve() -> None:
+    targets = pd.DataFrame({"BTC": [0.25], "ETH": [0.0]}, index=[pd.Timestamp("2020-01-02")])
+    equity, trades, _ = run_backtest(_market(), targets, _config())
+    assert equity.loc[pd.Timestamp("2020-01-02"), "cash"] > 70000.0
+    assert (trades["action"] == "BUY").sum() == 1
