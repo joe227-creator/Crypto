@@ -63,15 +63,34 @@ def _score_one(
     provisional_turnover = turnover_measure(equity["equity"], trades)
     if baseline_turnover is None:
         baseline_turnover = provisional_turnover
-    metrics, windows = evaluate(equity, trades, baseline_turnover, config)
+    full_metrics, full_windows = evaluate(equity, trades, baseline_turnover, config)
+    evaluation = config["evaluation"]
+    validation, _ = _slice_score_with_windows(
+        equity,
+        trades,
+        baseline_turnover,
+        config,
+        evaluation["validation_start"],
+        evaluation["validation_end"],
+    )
+    test, test_windows = _slice_score_with_windows(
+        equity,
+        trades,
+        baseline_turnover,
+        config,
+        evaluation["test_start"],
+        config["data"].get("end_date"),
+    )
+    metrics = dict(test)
     metrics["mode"] = mode
     metrics["n_trades"] = int(len(trades))
     metrics["n_buy_trades"] = int((trades["action"].eq("BUY")).sum()) if not trades.empty else 0
     metrics["fees_paid"] = float(trades["fee"].sum()) if not trades.empty else 0.0
     metrics["parameters"] = params or {}
-    metrics["validation"] = _slice_score(equity, trades, baseline_turnover, config, "2022-01-01", "2023-12-31")
-    metrics["test"] = _slice_score(equity, trades, baseline_turnover, config, "2024-01-01", config["data"].get("end_date"))
-    return metrics, equity, trades, windows
+    metrics["full"] = full_metrics
+    metrics["validation"] = validation
+    metrics["test"] = test
+    return metrics, equity, trades, test_windows
 
 
 def _slice_score(
@@ -82,12 +101,24 @@ def _slice_score(
     start: str,
     end: str | None,
 ) -> dict[str, Any]:
+    result, _ = _slice_score_with_windows(equity, trades, baseline_turnover, config, start, end)
+    return result
+
+
+def _slice_score_with_windows(
+    equity: pd.DataFrame,
+    trades: pd.DataFrame,
+    baseline_turnover: float,
+    config: dict[str, Any],
+    start: str,
+    end: str | None,
+) -> tuple[dict[str, Any], pd.DataFrame]:
     try:
         result, windows = evaluate(equity, trades, baseline_turnover, config, start=start, end=end)
         result["windows"] = int(len(windows))
-        return result
+        return result, windows
     except ValueError as exc:
-        return {"status": "insufficient_complete_windows", "error": str(exc)}
+        return {"status": "insufficient_complete_windows", "error": str(exc)}, pd.DataFrame()
 
 
 def _run_optuna(
@@ -240,7 +271,7 @@ def main() -> int:
     reference_metrics, reference_equity, _, _ = _score_one(
         "buy_hold_50_50", market, features, feature_columns, config, None
     )
-    baseline_turnover = float(reference_metrics["turnover"])
+    baseline_turnover = float(reference_metrics["full"]["turnover"])
     for stage0_mode in STAGE0_MODES:
         metrics, equity, trades, windows = _score_one(
             stage0_mode,

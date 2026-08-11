@@ -1,9 +1,11 @@
 # BTC ETH Long-Only ML Research
 
-**Date:** 2026-08-10  
+**Date:** `2026-08-11`
 **Repository:** `https://github.com/joe227-creator/Crypto`  
-**OpenResearch project:** `019fec29-be2c-7d20-b098-70b35fefda7d`  
-**Status:** protocol and Stage 0 complete locally; orx execution blocked before first run by billing
+**OpenResearch server project:** `019fec29-be2c-7d20-b098-70b35fefda7d`
+**OpenResearch local project:** `528668ac-3d0c-414f-ab6f-5316030509e9`
+**Status:** balanced temporal contract and fair comparison bush completed locally;
+no model is promoted
 
 ## Objective
 
@@ -14,7 +16,9 @@ perpetual trade legs.
 
 ## Fixed Evaluation Protocol
 
-- Data range: `2018-01-01` inclusive through latest available daily bar.
+- Data range: `2018-01-01` inclusive through pinned market bar `2026-08-10`.
+  Fair contract/configured Yahoo request end is `2026-08-11`; cached metadata
+  records wider exclusive request end `2026-08-12` from snapshot construction.
 - Price source: Yahoo Finance daily `BTC-USD` and `ETH-USD`; Binance returned
   HTTP 451 from WSL and was documented as unavailable.
 - On-chain source: Coin Metrics Community daily BTC/ETH metrics where published:
@@ -23,13 +27,16 @@ perpetual trade legs.
   as-of join, forward-fill limited to three days.
 - Signal timing: form at daily close, execute target at next daily open.
 - Costs: 10 bps fee plus 5 bps slippage per side. Costs never set to zero.
-- Signal threshold: fixed at `0.0`; Optuna tunes Ridge regularization only.
+- Signal threshold: fixed at `0.0`; Optuna tunes only branch-declared model
+  parameters on validation data.
 - Labels: five-session forward simple return less fixed round-trip cost for
   classical models. Labels are used only when label end date is before the
   signal date minus one-session embargo.
-- Splits: expanding train from `2018-01-01`; validation `2022-01-01` to
-  `2023-12-31`; frozen test `2024-01-01` onward; minimum train history 365 days;
-  refit cadence 21 sessions.
+- Splits: training/in-sample `2018-01-01` through `2022-12-31`; validation
+  `2023-01-01` through `2024-12-31`; frozen test `2025-01-01` through
+  `2026-08-10`; minimum train history 365 days; refit cadence 21 sessions.
+- Validation is selection-only. Frozen test is primary `Research_score` and is
+  not used by Optuna or model decisions.
 - Primary windows: 126-session non-overlapping windows, complete windows only.
 - Sharpe: annualized using 252 sessions and zero annual risk-free rate.
 - Baseline turnover: 50/50 BTC/ETH buy-and-hold mean monthly BUY notional over
@@ -47,26 +54,37 @@ Research_score = mean_rolling_6m_return
 
 ## Environment And Reproduction
 
-- WSL2 Ubuntu 22.04, CPU-only local validation.
-- Main implementation commit: `e888298f61a3c6d4c8db2f6d53a30c7b544fbcd8`.
-- Root initial local reproduction commit: `5b3340fdfd1e6b4d7ec0092c4c7a29ff6fda278c`.
+- WSL2 CPU-only local validation; local OpenResearch runner uses WSL ext4 clone
+  `/home/user/.cache/openresearch/repos/joe227-creator/crypto-local`.
+- Current main smoke artifacts are ignored generated outputs; their commit field
+  identifies HEAD at generation time and is not full-source or fair-run
+  provenance.
+- Balanced contract reference commit: `572a211` on the answered control branch.
+- Root initial local reproduction commit:
+  `5b3340fdfd1e6b4d7ec0092c4c7a29ff6fda278c`.
 - Data manifest snapshot: `data/processed/manifest.json`, built 2026-08-10;
   market rows 6,288, on-chain rows 6,286, market end 2026-08-10.
 - Exact command: `bash measure.sh`.
-- Tests: project venv `python -m pytest -q` returned `8 passed` after session
-  embargo regression coverage.
+- Tests: `python -m pytest -q` returned `8 passed` after temporal-contract
+  changes. Fair-run branches passed JSON/Python syntax and artifact validation.
 - Baseline command also emits `.openresearch/artifacts/EVAL.md`, metrics JSON,
   equity curve, trade log, 126-session windows, signal/execution audit, seed
-  results, resolved config, and dataset manifest.
+  results, resolved config, and dataset manifest. The checked-out
+  `.openresearch/artifacts/EVAL.md` and `metrics.json` are ignored local smoke
+  artifacts. Their deterministic control metrics may match the fair control,
+  but they are not archived fair-anchor artifacts.
+  Answered fair-run artifacts are stored under
+  `/home/user/.local/share/openresearch/local-runs/<run-id>/repo/.openresearch/artifacts`.
 
 Raw downloads remain cached locally under `data/raw/` with fetch-date metadata,
 source URL, requested range, and SHA-256. Generated data and run artifacts are
 ignored from Git to avoid committing mutable snapshots; manifest and commands
 remain versioned.
 
-## Stage 0 Local Results
+## Full-History Stage 0 Reference Results
 
-These are direct local fixed-contract results. They are not orx run results.
+These are direct local full-history results from the current main smoke. They
+are not fair primary test results and are not orx run results.
 
 | Strategy | Research_score | Max DD | Sharpe | Turnover | Windows |
 |---|---:|---:|---:|---:|---:|
@@ -84,13 +102,26 @@ an assertion that it is best deployable portfolio.
 
 ## Experiment Tree
 
+Historical root `3b0fb31c-6fed-4c8d-9b26-0160fa56e4d3` and its old-split
+children remain frozen historical evidence only. Fair tree:
+
 ```text
-Stage 0 Baseline
-├── Stage 1 Ridge technical features
-└── Stage 1 Ridge plus on-chain
+Fair snapshot anchor `51b44ade-505c-44fc-8ca2-adb724bb9a63`
+└── Temporal split anchor `ec6bed56-2490-4113-b2fb-981e9bbe06a5`
+    └── Balanced temporal contract `b405429f-01aa-4f18-9492-005bb3ab17b4`
+        ├── Technical Ridge
+        ├── Ridge plus lagged on-chain
+        ├── ARIMA
+        ├── ETS
+        ├── Cross-asset Ridge
+        ├── Pooled Ridge
+        ├── EMA Ridge
+        ├── Top-1 Ridge
+        ├── Hysteresis Ridge
+        └── Volatility-gated Ridge
 ```
 
-OpenResearch IDs:
+Historical server planning and smoke nodes:
 
 | Experiment | ID | Branch | Commit | Orx run |
 |---|---|---|---|---|
@@ -98,25 +129,64 @@ OpenResearch IDs:
 | Stage 1 Ridge technical features | `019fec2f-a592-70ab-9915-1612dbfb4bbf` | `orx/stage-1-ridge-technical-features-104f71c6` | `9dae8cd` | none |
 | Stage 1 Ridge plus on-chain | `019fec2f-aa59-7ead-be05-a8b7b6dc81c0` | `orx/stage-1-ridge-plus-on-chain-e5162886` | `13ddaf3` | none |
 
-All nodes inherit fixed `bash measure.sh`. Stage 1 children vary only feature
-information and run eight sequential Optuna trials on validation data.
+The local root and all children inherit fixed `bash measure.sh`. Fair children
+vary one model-family, feature, or portfolio-mapping decision and run eight
+sequential validation-only Optuna trials where applicable. Answered branches are
+frozen. No fair child became parent for a stacked bush.
 
-## Stage 1 Local Smoke Evidence
+Fair snapshot, split, control, and sibling nodes:
 
-Smoke values validate code and artifacts only. They do not answer orx nodes and
-cannot trigger promotion.
+| Experiment | ID | Parent | Code commit | Orx run |
+|---|---|---|---|---|
+| Fair snapshot anchor | `51b44ade-505c-44fc-8ca2-adb724bb9a63` | none | snapshot anchor | none |
+| Temporal split anchor | `ec6bed56-2490-4113-b2fb-981e9bbe06a5` | `51b44ade-505c-44fc-8ca2-adb724bb9a63` | temporal anchor | none |
+| Balanced 50/50 control | `b405429f-01aa-4f18-9492-005bb3ab17b4` | `ec6bed56-2490-4113-b2fb-981e9bbe06a5` | `572a211` | `9ec6329e-3c8b-409f-95f1-f0ebe9794e16` |
+| Technical Ridge | `a903c343-b32b-47ff-a19e-1b4050d7f793` | `b405429f-01aa-4f18-9492-005bb3ab17b4` | `ceb9f33` | `5b151771-3dae-4439-9dac-428a44ede82f` |
+| Ridge plus on-chain | `c2c974b4-abe1-4953-8efb-feaa477cdb18` | `b405429f-01aa-4f18-9492-005bb3ab17b4` | `3078fba` | `8cb61076-5cac-4538-a91e-cc4a1f5e880f` |
+| ARIMA | `a8eee72f-942d-4ce9-8461-443638d01197` | `b405429f-01aa-4f18-9492-005bb3ab17b4` | `05bb40e` | `9eb8a8de-5258-4b08-a082-2a890961f6f9` |
+| ETS | `61b47e35-bc71-4d8c-b793-38bbfd654387` | `b405429f-01aa-4f18-9492-005bb3ab17b4` | `990021b` | `405a267c-7509-452e-9bdb-22b18a180bab` |
+| Cross-asset Ridge | `ac10fa19-d0e3-4376-bd36-97431b5368f6` | `b405429f-01aa-4f18-9492-005bb3ab17b4` | `a6ba973` | `c27c2db6-c8bb-43b8-bd80-7361f43ef68f` |
+| Pooled Ridge | `4a0eb7f8-bb3c-4542-ad31-71a9cbd9e3af` | `b405429f-01aa-4f18-9492-005bb3ab17b4` | `eaa3651` | `bf7df15e-9f45-431f-a6a7-2029f20bccf4` |
+| EMA Ridge | `f92e75e0-a0f8-483c-9981-f7526afc7ac6` | `b405429f-01aa-4f18-9492-005bb3ab17b4` | `363e381` | `f79e767b-13c8-40b3-9eb8-943aac42e3fc` |
+| Top-1 Ridge | `335af757-cb6d-429a-a0d5-be9df4b2ee40` | `b405429f-01aa-4f18-9492-005bb3ab17b4` | `990d1b2` | `505056ac-5b31-4ed2-8c38-29add2e4cf99` |
+| Hysteresis Ridge | `8d6e2d4d-719a-4ddb-87fb-9f27f2d36316` | `b405429f-01aa-4f18-9492-005bb3ab17b4` | `dcd263f` | `f14e7395-4126-4a0f-9ecb-35f87ff101a4` |
+| Volatility-gated Ridge | `d2669976-1668-429c-acf4-a6b16f6d188a` | `b405429f-01aa-4f18-9492-005bb3ab17b4` | `8e93d14` | `140323a1-1d02-4081-9bf9-00a3537fb07b` |
 
-| Direction | Full score | Validation score | Test score | Turnover | Optuna best |
-|---|---:|---:|---:|---:|---|
-| Ridge technical only | -1.1859575 | -0.6547601 | -1.0324355 | 12.4341234 | alpha 89.1665528 |
-| Ridge plus lagged on-chain | -1.0763066 | -0.6487563 | -0.5311196 | 11.4842383 | alpha 89.1665528 |
+## Historical Local Results
 
-Fixed-protocol recomputation uses zero entry threshold and alpha-only Optuna.
-On-chain enrichment is less negative locally but both candidates remain far
-below frozen 50/50 score `0.1115835`, with high turnover penalties. Neither has
-orx evidence or robustness audit. No promotion made.
+Earlier local runs used a different validation/test boundary and are retained for
+history only. They must not be compared directly with fair-contract scores.
+Historical root score was `0.1113547`; old technical Ridge, on-chain Ridge,
+ARIMA, and ETS scores were `-1.1859575`, `-1.0763066`, `-0.8241698`, and
+`-1.1998268` respectively.
 
-## Stage 2 Local Screening
+## Fair-Contract Results
+
+All rows below use pinned snapshot hashes, balanced dates, fixed execution/cost
+protocol, and local tracked runs. Each emitted `EVAL.md`, metrics, equity, trade,
+window, audit, seed, config, and data-manifest text artifacts. Test score is
+primary; validation score is selection-only.
+
+| Node | Run | Validation | Frozen test | Turnover | Selected parameter |
+|---|---|---:|---:|---:|---|
+| 50/50 control | `9ec6329e-3c8b-409f-95f1-f0ebe9794e16` | 0.5314679 | -0.2189362 | 0.0000 | none |
+| Technical Ridge | `5b151771-3dae-4439-9dac-428a44ede82f` | -0.7239327 | -0.9475211 | 5.3080 | alpha 89.1666 |
+| Ridge plus on-chain | `8cb61076-5cac-4538-a91e-cc4a1f5e880f` | -0.1714904 | -0.6419978 | 3.9480 | alpha 44.3466 |
+| ARIMA | `9eb8a8de-5258-4b08-a082-2a890961f6f9` | 0.5506139 | -0.7781348 | 4.7139 | order 2 |
+| ETS | `405a267c-7509-452e-9bdb-22b18a180bab` | 1.0205072 | -0.1819630 | 0.8950 | alpha 0.5053 |
+| Cross-asset Ridge | `c27c2db6-c8bb-43b8-bd80-7361f43ef68f` | -0.9148506 | -1.2068932 | 7.4232 | alpha 80.6384 |
+| Pooled Ridge | `bf7df15e-9f45-431f-a6a7-2029f20bccf4` | -0.6372513 | -0.9904385 | 5.1874 | alpha 0.0754 |
+| EMA Ridge | `f79e767b-13c8-40b3-9eb8-943aac42e3fc` | 0.1572936 | -0.4812781 | 1.9593 | alpha 1.7100, span 17 |
+| Top-1 Ridge | `505056ac-5b31-4ed2-8c38-29add2e4cf99` | -0.4045567 | -0.7593821 | 4.3029 | alpha 89.1666 |
+| Hysteresis Ridge | `f14e7395-4126-4a0f-9ecb-35f87ff101a4` | 0.0617274 | -0.3176550 | 2.1506 | alpha 0.8263, band 0.00988 |
+| Volatility-gated Ridge | `140323a1-1d02-4081-9bf9-00a3537fb07b` | -0.6569587 | -0.7909709 | 4.7239 | alpha 80.6384, threshold 0.7222 |
+
+No candidate beats fair control robustly. ETS narrowly exceeds control
+numerically, but has negative test rolling return and loses to ETH buy-and-hold
+test score `-0.0746825`. All other directions remain below control. No child is
+promoted or suitable for deployment.
+
+## Historical / Pre-Balanced Stage 2 Screening
 
 Stage 2 literature review used arXiv:2602.10785, which emphasizes double
 out-of-sample walk-forward selection with conservative fees, and
@@ -130,21 +200,21 @@ screened locally before creating a tree node:
 | 5 | -1.7015701 | -0.6832194 | -0.8427689 | 18.3135 | reject |
 | 21 | -0.7378930 | -0.4975945 | -0.4542211 | 8.3825 | least bad, reject |
 
-AR horizon 21 is still below frozen baseline `0.1115835`. No Stage 2 orx node
-was created because root and existing Stage 1 siblings have no orx answers; a
-new child without confirmed parent would violate stacked-bush protocol.
+AR horizon 21 is still below historical baseline `0.1115835`. This screening
+used the pre-balanced contract and is not fair-comparable. After the balanced
+control answered, ARIMA and ETS were tested as fair siblings under that confirmed
+parent; both lost, so no deeper stacked-bush node was created.
 
 ## Robustness And Leakage
 
-- Seeds configured: `11, 22, 33, 44, 55`. Stage 0 is deterministic, so seed
-  spread is zero. Stage 1 smoke currently repeats deterministic strategy output;
-  full multi-seed training/evaluation remains pending orx execution.
-- Validation and test slices report complete 126-session windows: validation 5,
-  test 7 for baseline and Stage 1 smoke.
-- Regime slices, parameter sensitivity around Optuna optima, per-seed curves,
-  feature importance stability, and formal walk-forward promotion audit remain
-  unmeasured because no orx run reached execution. Stage 2 AR screening is
-  local-only and cannot substitute for those checks.
+- All fair runs used configured seeds `11, 22, 33, 44, 55`; seed score spread
+  was zero because current forecasters are deterministic, so repeated seed rows
+  are not independent stochastic evidence.
+- Fair validation and test slices report 5 and 4 complete 126-session windows.
+- Regime slices, parameter sensitivity beyond selected Optuna values, feature
+  importance stability, and formal Deflated Sharpe or equivalent multiple-testing
+  adjustment remain unmeasured. These are explicit promotion gaps, not positive
+  evidence.
 - Leakage guards present: next-open execution, as-of on-chain join with lag,
   train-only feature scaling, label-end embargo, causal expanding fits, and
   signal/execution audit artifact.
@@ -164,25 +234,25 @@ rejected.
 
 ## Blocker And Recommendation
 
-Managed CPU launch of root returned HTTP 402 `billing_required` / `Out of
-credits` before provisioning. Installed `orx` supports local backend only for
-projects created by `orx up`; current server project cannot be converted by CLI.
-Therefore no orx node has answered, no child is scientifically promoted, and
-no final model recommendation is valid.
+Managed CPU launch on server project still returns HTTP 402 `billing_required` /
+`Out of credits` before provisioning. Local `orx up` project provides a working
+CPU backend. Balanced anchor and ten fair model siblings answered. ETS narrowly
+exceeded control numerically, but no model met robust promotion criteria.
 
-Recommendation: **keep Stage 0 reference and paper-trade nothing** until OpenResearch
-credits are restored. Then run root and siblings sequentially, collect full
-5-10 seed and regime evidence, and only promote a candidate that beats frozen
-reference on robustness-adjusted score. Do not deploy current Ridge smoke
-variants.
+Recommendation: **keep 50/50 control as research reference and paper-trade
+nothing**. Do not deploy any fair Ridge, ARIMA, ETS, cross-asset, or allocation
+variant. Foundation-model work remains open only after PyTorch, TimesFM/Kronos
+dependencies, and checkpoints are available; any new bush needs fresh literature
+evidence and a confirmed parent winner.
 
 ## Exact Next Commands
 
 ```bash
-# Restore OpenResearch credits first, then from repository root:
-wsl.exe -- bash -lc 'orx exp run 019fec2a-3c90-74f8-a1c6-fddf122b3d4c --cpu cpu5c --vcpus 8'
-wsl.exe -- bash -lc 'orx exp wait --project 019fec29-be2c-7d20-b098-70b35fefda7d'
-wsl.exe -- bash -lc 'orx runs 019fec29-be2c-7d20-b098-70b35fefda7d'
+# Local project and answered root:
+orx projects
+orx runs 528668ac-3d0c-414f-ab6f-5316030509e9
+# Stop here unless foundation dependencies and a new literature-backed question
+# are available. Never edit answered branches.
 ```
 
 Re-read all terminal runs after each wait tick. Analyze `EVAL.md` before

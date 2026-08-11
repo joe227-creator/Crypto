@@ -1,4 +1,4 @@
 "horizon","full_research_score","validation_research_score","test_research_score","turnover","sharpe","maximum_drawdown","source","verdict"
-"1","-2.628633557","-1.107239789","-1.553994366","25.725792","0.050989","-0.937028","local _score_one AR mode","screened and rejected; no orx result"
-"5","-1.701570144","-0.683219439","-0.842768882","18.313482","0.342070","-0.720508","local _score_one AR mode","screened and rejected; no orx result"
-"21","-0.737892965","-0.497594533","-0.454221071","8.382493","0.328252","-0.815308","local _score_one AR mode","least bad AR horizon but rejected versus baseline; no orx result"
+"1","-2.628633557","-1.107239789","-1.553994366","25.725792","0.050989","-0.937028","historical local _score_one AR mode; pre-balanced contract","screened and rejected; historical only; no fair promotion"
+"5","-1.701570144","-0.683219439","-0.842768882","18.313482","0.342070","-0.720508","historical local _score_one AR mode; pre-balanced contract","screened and rejected; historical only; no fair promotion"
+"21","-0.737892965","-0.497594533","-0.454221071","8.382493","0.328252","-0.815308","historical local _score_one AR mode; pre-balanced contract","least bad historical AR horizon; rejected; no fair promotion"

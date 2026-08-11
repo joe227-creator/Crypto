@@ -1,6 +1,6 @@
 # Progress Notes
 
-## Stage 0
+## Historical / Pre-Balanced Stage 0
 
 Local fixed-contract reproduction completed on 2026-08-10. 6 initial tests,
 then 7 after cash-sleeve regression coverage. 2018-01-01 through 2026-08-10
@@ -9,11 +9,12 @@ buy-and-hold defines baseline turnover `0.9990010` and local Research_score
 `0.1115835`. BTC buy-and-hold scores `0.1275554`; ETH scores `0.1196255`; cash
 scores `-0.1200000`. No local rule beats BTC buy-and-hold after fixed costs.
 
-OpenResearch root launch attempted through managed CPU backend. API returned
-HTTP 402 `billing_required` before provisioning. Root has no run ID and remains
-provisional. Local numbers are reproducibility evidence, not orx answers.
+Initial server root launch attempted through managed CPU backend and returned
+HTTP 402 `billing_required` before provisioning. That server project remains
+unanswered. Later local OpenResearch execution answered the historical root;
+those results are documented below and remain separate from the fair contract.
 
-## Stage 1 Bush 1
+## Historical / Pre-Balanced Stage 1 Bush 1
 
 Literature evidence: arXiv:2606.00060 emphasizes transaction-cost-aware
 walk-forward execution; arXiv:2606.09478 finds weak state-dependent return
@@ -27,14 +28,14 @@ Technical plus lagged on-chain Ridge fixed-protocol local smoke: score
 `-1.0763066`, validation `-0.6487563`, test `-0.5311196`, turnover `11.4842383`,
 alpha `89.1665528`.
 
-On-chain child is locally less bad but not promoted. Neither child has an orx
-run ID because same billing blocker prevented execution. Local smoke does not
-substitute for sequential orx runs, 5-10 seed robustness, regime slices, or
-promotion evidence.
+On-chain child was locally less bad but not promoted. These original server
+planning nodes have no orx run IDs because the same billing blocker prevented
+execution. Local smoke did not substitute for sequential orx runs, robustness,
+regime slices, or promotion evidence; fair-contract reruns are documented below.
 
 Session-based embargo regression passed. Fixed smoke values remained unchanged.
 
-## Stage 2 Screening
+## Historical / Pre-Balanced Stage 2 Screening
 
 Fresh literature review covered arXiv:2602.10785 and arXiv:2606.27100. The first
 supports strict double out-of-sample walk-forward testing with conservative
@@ -47,22 +48,99 @@ was least bad but remained below frozen baseline `0.1115835`. Screening is not a
 orx answer, so no node was created, no direction was promoted, and no parent was
 chosen for a new stacked bush.
 
-## Next Tick After Credits
+## Superseded Plan
 
-1. Run root `019fec2a-3c90-74f8-a1c6-fddf122b3d4c` sequentially through orx.
-2. Read root `EVAL.md`; freeze root only after successful answer.
-3. Run technical child, then on-chain child, one at a time; read each artifact.
-4. Promote only if full score and robustness-adjusted test evidence beats the
-   frozen reference. Do not promote from local smoke values.
+Earlier credit-recovery and pre-balanced launch plans are superseded by the
+answered local runs and balanced fair contract below. They are not active
+commands. Server compute remains blocked; fair tree is stopped and no parent is
+promoted.
 
-## Open Directions After Credit Restoration
+## Local OpenResearch Execution
 
-1. Classical ARIMA/ETS return forecasts, one model-family decision, with the
-   same fixed scoring and execution contract.
-2. TimesFM zero-shot point/quantile forecast adapter, only after public package
-   and checkpoint availability is verified.
-3. Kronos zero-shot OHLCV forecast adapter, only after runtime dependency and
-   public checkpoint availability is verified.
+Local dashboard project `528668ac-3d0c-414f-ab6f-5316030509e9` was created on
+WSL ext4 after the Windows-mounted checkout triggered an `Invalid cross-device
+link` clone failure. Fixed command remained `bash measure.sh`; all runs below
+completed sequentially and emitted `EVAL.md` plus required text artifacts.
 
-Do not create these as children until root has an orx answer and a confirmed
-parent. Current server project still has no compute credit.
+Root `3b0fb31c-6fed-4c8d-9b26-0160fa56e4d3`, run
+`35c0d312-e63a-44c6-a672-a9f21268b29e`, commit `aa85267`, answered with score
+`0.1113547041`, validation `-0.3271167699`, test `0.0573868441`, and turnover
+`0.9990010`. Root is frozen control.
+
+Feature-information bush under root completed without promotion:
+
+- Technical Ridge `d717b334-1577-46d1-ae40-acd4d65456da`, run
+  `2cd860f7-e2b6-4b8d-82e8-872aa47a7fc7`: score `-1.1859574994`, validation
+  `-0.6547601164`, test `-1.0324354803`, turnover `12.4341234`.
+- Ridge plus lagged on-chain `b0b6a0e1-f859-4ce9-a0cb-5a05ad492956`, run
+  `bede066d-683c-4f9b-a3a4-40d0966a4675`: score `-1.0763065591`, validation
+  `-0.6487562985`, test `-0.5311196384`, turnover `11.4842383`.
+
+Classical model-family bush under root also completed without promotion:
+
+- ARIMA(1,0,0) `4f43dbdd-79ef-4c74-9a46-7bae616b0c7a`, run
+  `e3af2a2a-f8dc-4ebf-a461-84eb85c64c53`: validation selected order 1; score
+  `-0.8241698015`, validation `-0.6370704203`, test `-0.6293706158`, turnover
+  `8.2565330`.
+- ETS level smoothing `dd1d9581-2f47-4339-9feb-a446907499e0`, run
+  `6bacf5cd-ec09-42d9-8398-285001038901`: validation selected alpha
+  `0.2583784`; score `-1.1998268261`, validation `0.1605075262`, test
+  `-0.0888851444`, turnover `16.0372545`. Validation gain did not survive full
+  evaluation and turnover penalty.
+
+All five local runs had zero seed-score spread because current forecasters are
+deterministic. Four model siblings regressed versus confirmed root; no model is
+promoted or suitable for deployment. Stop at this checkpoint pending foundation
+model dependencies or a separately justified research direction.
+
+## Balanced Contract And Fair Bush
+
+Historical local answers above are not directly comparable: they used an older
+split and/or mutable data. New child contract was selected and frozen: training
+`2018-01-01..2022-12-31`, validation `2023-01-01..2024-12-31`, frozen test
+`2025-01-01..2026-08-10`, with fair contract/configured request end
+`2026-08-11`. Cached Yahoo metadata records wider exclusive request end
+`2026-08-12` from snapshot construction. Pinned snapshot hashes are recorded
+in `DECISIONS.md`.
+
+Balanced control anchor `b405429f-01aa-4f18-9492-005bb3ab17b4`, run
+`9ec6329e-3c8b-409f-95f1-f0ebe9794e16`: validation `0.5314679`, frozen test
+`-0.2189362`, full `0.1115835`, five validation windows, four test windows.
+
+Fair siblings, all under same snapshot and protocol:
+
+- Technical Ridge `a903c343-b32b-47ff-a19e-1b4050d7f793`, run
+  `5b151771-3dae-4439-9dac-428a44ede82f`: validation `-0.7239327`, test
+  `-0.9475211`, turnover `5.3080`.
+- Ridge plus on-chain `c2c974b4-abe1-4953-8efb-feaa477cdb18`, run
+  `8cb61076-5cac-4538-a91e-cc4a1f5e880f`: validation `-0.1714904`, test
+  `-0.6419978`, turnover `3.9480`.
+- ARIMA `a8eee72f-942d-4ce9-8461-443638d01197`, run
+  `9eb8a8de-5258-4b08-a082-2a890961f6f9`: validation `0.5506139`, test
+  `-0.7781348`, turnover `4.7139`.
+- ETS `61b47e35-bc71-4d8c-b793-38bbfd654387`, run
+  `405a267c-7509-452e-9bdb-22b18a180bab`: validation `1.0205072`, test
+  `-0.1819630`, turnover `0.8950`; validation overfit did not transfer.
+- Cross-asset Ridge `ac10fa19-d0e3-4376-bd36-97431b5368f6`, run
+  `c27c2db6-c8bb-43b8-bd80-7361f43ef68f`: validation `-0.9148506`, test
+  `-1.2068932`, turnover `7.4232`.
+- Pooled Ridge `4a0eb7f8-bb3c-4542-ad31-71a9cbd9e3af`, run
+  `bf7df15e-9f45-431f-a6a7-2029f20bccf4`: validation `-0.6372513`, test
+  `-0.9904385`, turnover `5.1874`.
+- EMA Ridge `f92e75e0-a0f8-483c-9981-f7526afc7ac6`, run
+  `f79e767b-13c8-40b3-9eb8-943aac42e3fc`: validation `0.1572936`, test
+  `-0.4812781`, turnover `1.9593`.
+- Top-1 Ridge `335af757-cb6d-429a-a0d5-be9df4b2ee40`, run
+  `505056ac-5b31-4ed2-8c38-29add2e4cf99`: validation `-0.4045567`, test
+  `-0.7593821`, turnover `4.3029`.
+- Hysteresis Ridge `8d6e2d4d-719a-4ddb-87fb-9f27f2d36316`, run
+  `f14e7395-4126-4a0f-9ecb-35f87ff101a4`: validation `0.0617274`, test
+  `-0.3176550`, turnover `2.1506`.
+- Volatility-gated Ridge `d2669976-1668-429c-acf4-a6b16f6d188a`, run
+  `140323a1-1d02-4081-9bf9-00a3537fb07b`: validation `-0.6569587`, test
+  `-0.7909709`, turnover `4.7239`.
+
+Fair bush stopped. No child beats fixed control robustly, no parent is promoted,
+and no deployment recommendation changes: retain simple controls and paper-trade
+nothing. Continue only with new evidence-backed hypotheses or unblocked
+foundation-model dependencies.

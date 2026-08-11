@@ -7,7 +7,11 @@ candidate with one immutable transaction-cost and walk-forward protocol.
 ## Scope
 
 - Universe: BTC and ETH only.
-- Bars: daily UTC bars from `2018-01-01` through latest available bar.
+- Bars: daily UTC bars from `2018-01-01` through pinned market bar
+  `2026-08-10`. Fair contract/configured Yahoo request end is `2026-08-11`
+  because its end bound is exclusive. Cached raw metadata records a wider
+  `2026-08-12` request from snapshot construction; processed snapshot ends at
+  `2026-08-10`.
 - Price source: Yahoo Finance chart API, used because Binance is restricted in
   the execution environment. The source and fetch date are saved with every raw
   pull.
@@ -16,7 +20,8 @@ candidate with one immutable transaction-cost and walk-forward protocol.
 - Costs: 10 bps fee plus 5 bps slippage on every buy and sell.
 - Execution: signals are formed at close and executed at the next bar open.
 - Portfolio: non-negative BTC, ETH, and cash weights summing to one.
-- Score: fixed `Research_score` in `crypto_research/metrics.py`; weights,
+- Score: fixed `Research_score` implemented by `research_score()` in
+  `crypto_research/metrics.py`; weights,
   thresholds, labels, costs, and evaluation windows are not tuned.
 
 ## Reproduce
@@ -37,16 +42,31 @@ emits text artifacts under `.openresearch/artifacts/`.
 
 ## Evaluation partitions
 
-- Development train: `2018-01-01` through `2021-12-31`.
-- Validation: `2022-01-01` through `2023-12-31`, used only for Optuna decisions.
-- Frozen test: `2024-01-01` through latest available bar.
-- Primary score: full available evaluation period after data warm-up, using
-  complete non-overlapping 126-session windows. Validation and test slices are
-  reported separately for robustness.
+- Training/in-sample: `2018-01-01` through `2022-12-31`.
+- Validation: `2023-01-01` through `2024-12-31`, used only for Optuna and model
+  selection decisions.
+- Frozen test: `2025-01-01` through `2026-08-10`; configured evaluation/request
+  end bound is `2026-08-11`. Cached Yahoo pulls used wider exclusive
+  `2026-08-12` and returned no bar after `2026-08-10`.
+- Primary `Research_score`: frozen test only, using complete non-overlapping
+  126-session windows. Full-history, validation, and test slices are retained
+  separately for robustness.
 
 Classical ML models fit only rows whose labels end strictly before each signal
 date. Scalers fit on the same historical rows. Signals execute on the next bar,
 so no close or on-chain observation from the future can enter a position.
+
+## Research Status
+
+- Fair contract: training `2018-01-01..2022-12-31`, validation
+  `2023-01-01..2024-12-31`, frozen test `2025-01-01..2026-08-10`.
+- Pinned snapshot hashes and contract rationale: `research/DECISIONS.md` and
+  `research/ADR-001-balanced-temporal-contract.md`.
+- Fair control test score: `-0.2189362`; no model candidate met promotion
+  criteria. Retain controls; paper-trade nothing.
+- Full experiment tree, run IDs, metrics, risks, and stop decision:
+  `research/FINAL_REPORT.md`.
+- Chronological run ledger: `research/experiment_ledger.csv`.
 
 ## Research ladder
 
@@ -55,7 +75,8 @@ so no close or on-chain observation from the future can enter a position.
 2. Stage 1: deterministic Ridge walk-forward model with fixed zero signal
    threshold, lagged returns,
    volatility, range, volume, and lagged on-chain z-scores; optional Optuna
-   tuning is validation-only and restricted to Ridge regularization.
+   tuning is validation-only; branch-specific parameters never enter frozen
+   test selection.
 3. Stage 2: causal autoregressive return forecast.
 4. Stage 3: optional TimesFM and Kronos adapters. They remain disabled unless
    their public dependencies and checkpoints are available; unavailable

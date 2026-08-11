@@ -1,7 +1,7 @@
 {
   "data": {
     "start_date": "2018-01-01",
-    "end_date": null,
+    "end_date": "2026-08-11",
     "assets": ["BTC", "ETH"],
     "price_source": "yahoo",
     "onchain_source": "coinmetrics",
@@ -19,9 +19,10 @@
     "annualization_sessions": 252,
     "rf_annual": 0.0,
     "train_start": "2018-01-01",
-    "validation_start": "2022-01-01",
-    "validation_end": "2023-12-31",
-    "test_start": "2024-01-01",
+    "train_end": "2022-12-31",
+    "validation_start": "2023-01-01",
+    "validation_end": "2024-12-31",
+    "test_start": "2025-01-01",
     "min_train_days": 365,
     "refit_sessions": 21,
     "embargo_sessions": 1,

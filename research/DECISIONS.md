@@ -15,8 +15,9 @@ baseline turnover reference computed from 50/50 BTC/ETH buy-and-hold. Signals
 form at close and execute at next open with 10 bps fees and 5 bps slippage per
 side. No model or Optuna trial can change these values.
 
-Signal threshold is fixed at `0.0`. Optuna tunes Ridge regularization only;
-threshold, labels, costs, score weights, and evaluation partitions remain fixed.
+Signal threshold is fixed at `0.0`. Optuna tunes only branch-declared model
+parameters on validation; threshold, labels, costs, score weights, and
+evaluation partitions remain fixed.
 
 Embargo is session-based, not calendar-day-based: one-session purge excludes
 the immediately preceding market session even across weekends.
@@ -26,16 +27,22 @@ datetime resolution and can make `merge_asof` reject otherwise identical daily
 keys. Feature join keys are explicitly normalized to `datetime64[ns]` as a
 second guard.
 
-## OpenResearch execution blocker
+## OpenResearch execution
 
-Project `019fec29-be2c-7d20-b098-70b35fefda7d` was created and its root command
-was set exactly once to `bash measure.sh`. Managed CPU launch returned HTTP 402
-`billing_required` / `Out of credits` before provisioning. Local backend is
-available only for projects created by `orx up`, and this server project cannot
-be converted by the installed CLI. Therefore no orx run ID, EVAL artifact, or
-scientific promotion exists yet. Direct local `bash measure.sh` output is kept
-as supporting reproducibility evidence only and is never treated as an orx
-experiment answer.
+Server project `019fec29-be2c-7d20-b098-70b35fefda7d` remains blocked by HTTP 402
+`billing_required` / `Out of credits`. Local dashboard project
+`528668ac-3d0c-414f-ab6f-5316030509e9` was created through `orx up` and bound to
+an ext4 clone at `/home/user/.cache/openresearch/repos/joe227-creator/crypto-local`.
+The fixed command stayed `bash measure.sh`. A Windows-mounted source first
+failed with `Invalid cross-device link`; moving source clone to ext4 repaired
+runner setup without changing code or protocol.
+
+Historical local project root answered successfully, so its branch is frozen.
+Four historical direct children were run sequentially in two literature-backed
+bushes. A balanced-contract anchor and ten fair siblings were then answered
+under one pinned snapshot. All produced valid EVAL output; ETS narrowly beat
+fair control numerically, but failed robust promotion criteria. No promotion
+exists.
 
 ## First literature bush
 
@@ -53,10 +60,75 @@ labels, costs, thresholds in the fixed score, split dates, or run command.
 arXiv:2602.10785 supports double out-of-sample walk-forward evaluation with
 conservative fees. arXiv:2606.27100 cautions that TSFM forecast rankings do not
 automatically imply trading alpha. Existing recursive AR horizon screening was
-performed locally only; all horizons lost to frozen baseline. No Stage 2 child
-was created because root and Stage 1 siblings have no orx answers. Stacked-bush
-depth requires confirmed parent winner; local smoke cannot establish one.
+performed locally only; all horizons lost to frozen baseline. After local root
+answered, ARIMA and ETS siblings were created under confirmed root and evaluated
+sequentially. Both lost to root, so stacked-bush depth stops at root; no child
+is promoted.
 
-Open directions remain ARIMA/ETS, TimesFM zero-shot, and Kronos zero-shot. They
-are blocked by absent orx compute credits and, for foundation models, missing
-runtime dependencies/checkpoints.
+## Local run conclusions
+
+Root `3b0fb31c-6fed-4c8d-9b26-0160fa56e4d3` / run
+`35c0d312-e63a-44c6-a672-a9f21268b29e` scored `0.1113547041`.
+
+Technical Ridge `d717b334-1577-46d1-ae40-acd4d65456da` / run
+`2cd860f7-e2b6-4b8d-82e8-872aa47a7fc7` scored `-1.1859574994`; lagged on-chain
+Ridge `b0b6a0e1-f859-4ce9-a0cb-5a05ad492956` / run
+`bede066d-683c-4f9b-a3a4-40d0966a4675` scored `-1.0763065591`.
+
+ARIMA `4f43dbdd-79ef-4c74-9a46-7bae616b0c7a` / run
+`e3af2a2a-f8dc-4ebf-a461-84eb85c64c53` scored `-0.8241698015`; ETS
+`dd1d9581-2f47-4339-9feb-a446907499e0` / run
+`6bacf5cd-ec09-42d9-8398-285001038901` scored `-1.1998268261`. ETS validation
+score `0.1605075262` reversed in full score because turnover reached
+`16.0372545`. Keep root as confirmed control; do not deploy model children.
+
+## Balanced Temporal Contract
+
+Earlier local answers used shorter validation and mutable live-data comparisons.
+Those answers remain frozen historical evidence and are not used for fair
+promotion. Selected contract uses chronological approximately 60/20/20
+availability: training `2018-01-01..2022-12-31`, validation
+`2023-01-01..2024-12-31`, frozen test `2025-01-01..2026-08-10`. Fair
+contract/configured Yahoo request end is `2026-08-11`; cached Yahoo metadata
+records wider exclusive request end `2026-08-12` from snapshot construction,
+with no returned market bar after `2026-08-10`.
+
+Validation is selection-only. Test is primary `Research_score` and stays
+untouched until final scoring. Every fair run uses pinned processed snapshot,
+126-session windows, one-session embargo, five-session labels, fixed costs, zero
+threshold, seeds `11|22|33|44|55`, eight sequential Optuna trials, and
+`bash measure.sh`.
+
+Pinned snapshot hashes: market
+`e9e18955f476e9b13019900ac377aade7e7f1f6cb3dfda3fa797182e84d45133`, on-chain
+`e53ff12518c3bbf080dafd4f9b8c4d6daf48fc48c759c42f42e62a36baf42cfe`, manifest
+`c26d693a894be8adc866767e3db7d81e617f94833cc520c022fa05116d465796`.
+
+The filesystem ADR for this decision is
+`research/ADR-001-balanced-temporal-contract.md`.
+
+## Fair Bush Result
+
+Balanced control anchor `b405429f-01aa-4f18-9492-005bb3ab17b4` answered with
+frozen-test score `-0.2189362363`, five validation windows, and four test
+windows. Ten fair siblings answered. ETS was closest at `-0.1819630`, narrowly
+above control, but had negative test rolling return, lost to ETH buy-and-hold
+test score `-0.0746825`, and was not robust enough to promote. All other fair
+directions scored below control.
+
+No promotion exists. Do not create stacked children from this bush. Seed score
+spread is zero because current implementations are deterministic; repeated seed
+rows are not independent stochastic evidence. Regime slices and formal
+Deflated Sharpe or equivalent multiple-testing adjustment remain pending.
+
+Fair-run artifacts are preserved outside the checkout at
+`/home/user/.local/share/openresearch/local-runs/<run-id>/repo/.openresearch/artifacts`.
+The ignored `.openresearch/artifacts/EVAL.md` and `metrics.json` in this checkout
+are local smoke output. Their commit field identifies HEAD at generation time.
+Deterministic control metrics may match the fair control, but these files are
+not archived fair-run anchor artifacts.
+
+Open directions remain TimesFM zero-shot and Kronos zero-shot. They are blocked
+by missing PyTorch/runtime dependencies/checkpoints; server compute also remains
+credit-blocked. No further bush should be created without a new evidence-backed
+hypothesis and a confirmed parent winner.

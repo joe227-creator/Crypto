@@ -37,6 +37,8 @@ def walk_forward_ridge(
     selected_features = [c for c in feature_columns if use_onchain or not c.startswith("onchain_")]
     evaluation = config["evaluation"]
     train_start = pd.Timestamp(evaluation["train_start"])
+    train_end = pd.Timestamp(evaluation["train_end"]) if evaluation.get("train_end") else pd.Timestamp.max
+    validation_end = pd.Timestamp(evaluation["validation_end"]) if evaluation.get("validation_end") else pd.Timestamp.max
     min_train_days = int(evaluation["min_train_days"])
     refit_sessions = int(evaluation["refit_sessions"])
     embargo = int(evaluation.get("embargo_sessions", 1))
@@ -56,9 +58,11 @@ def walk_forward_ridge(
                 if cutoff_position <= 0:
                     continue
                 label_cutoff = asset_dates[cutoff_position]
+                training_end = train_end if signal_date <= validation_end else signal_date
                 train = asset_rows[
                     (asset_rows["date"] >= train_start)
                     & (asset_rows["date"] < signal_date)
+                    & (asset_rows["date"] <= training_end)
                     & (asset_rows["label_end_date"] < label_cutoff)
                 ].dropna(subset=[*selected_features, "label"])
                 if train["date"].nunique() >= min_train_days:
@@ -86,6 +90,8 @@ def walk_forward_ar(
     """Causal autoregressive forecast of log returns, refit on expanding history."""
     evaluation = config["evaluation"]
     train_start = pd.Timestamp(evaluation["train_start"])
+    train_end = pd.Timestamp(evaluation["train_end"]) if evaluation.get("train_end") else pd.Timestamp.max
+    validation_end = pd.Timestamp(evaluation["validation_end"]) if evaluation.get("validation_end") else pd.Timestamp.max
     min_train_days = int(evaluation["min_train_days"])
     refit_sessions = int(evaluation["refit_sessions"])
     rows: list[dict[str, Any]] = []
@@ -95,7 +101,8 @@ def walk_forward_ar(
         model: tuple[np.ndarray, float] | None = None
         last_fit_index = -refit_sessions
         for signal_index, signal_date in enumerate(signal_dates):
-            history = returns[returns.index <= signal_date]
+            history_end = min(signal_date, train_end) if signal_date <= validation_end else signal_date
+            history = returns[returns.index <= history_end]
             if signal_index - last_fit_index >= refit_sessions or model is None:
                 history = history[history.index >= train_start]
                 if len(history) >= min_train_days:
