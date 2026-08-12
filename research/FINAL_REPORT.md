@@ -4,8 +4,8 @@
 **Repository:** `https://github.com/joe227-creator/Crypto`  
 **OpenResearch server project:** `019fec29-be2c-7d20-b098-70b35fefda7d`
 **OpenResearch local project:** `528668ac-3d0c-414f-ab6f-5316030509e9`
-**Status:** balanced temporal contract completed; cost-aware threshold Ridge
-promoted as research candidate; no deployment
+**Status:** balanced temporal contract completed; adaptive-refit Ridge promoted
+as research candidate; no deployment
 
 ## Objective
 
@@ -125,7 +125,12 @@ Fair snapshot anchor `51b44ade-505c-44fc-8ca2-adb724bb9a63`
             ├── TimesFM-to-Ridge hybrid [rejected]
             ├── TimesFM uncertainty gate [rejected]
             ├── XGBoost cost-aware [rejected]
-            └── LightGBM cost-aware [rejected]
+            ├── LightGBM cost-aware [rejected]
+            ├── Covariance-aware Ridge allocator [rejected]
+            ├── Ridge/AR forecast blend [rejected]
+            ├── Ridge label clipping [rejected]
+            └── Adaptive-refit Ridge [promoted research candidate]
+                └── Adaptive-refit covariance allocator [rejected]
 ```
 
 Historical server planning and smoke nodes:
@@ -194,6 +199,11 @@ primary; validation score is selection-only.
 | TimesFM uncertainty gate | local Stage 4 child | 0.2775677 | -0.5483675 | 2.5748 | max uncertainty 0.4808, threshold 0.01675 |
 | XGBoost cost-aware | local Stage 1 tree child | -0.3681458 | -0.4176403 | 3.0949 | n=435, depth=3, lr=0.017, threshold=0.0196 |
 | LightGBM cost-aware | local Stage 1 tree child | -0.4197973 | -0.4602400 | 2.8373 | n=473, depth=5, lr=0.011, threshold=0.0223 |
+| Covariance-aware Ridge allocator | local robustness child | 0.0745508 | -0.2496991 | 0.3199 | alpha 0.1527, risk 44.7044, turnover penalty 0.00482 |
+| Ridge/AR forecast blend | local robustness child | 0.1135487 | 0.1946880 | 1.6287 | Ridge weight 0.9876, horizon 5, threshold 0.02735 |
+| Ridge label clipping | local robustness child | -0.0938810 | -0.2307729 | 1.3770 | alpha 0.0620, label clip 0.1444, threshold 0.01675 |
+| Adaptive-refit Ridge | local robustness child | 0.0761147 | 0.2751355 | 0.9990 | alpha 0.02268, refit 46, threshold 0.02963 |
+| Adaptive-refit covariance allocator | local adaptive child | 0.1313989 | -0.0569918 | 0.2622 | refit 40, risk 48.8318, turnover penalty 0.00889 |
 
 Cost-aware threshold Ridge beats fair control score `-0.2189362`, ETH
 buy-and-hold `-0.0746825`, and all prior fair siblings. Test mean rolling return
@@ -229,6 +239,17 @@ LightGBM scored validation `-0.4197973`, frozen test `-0.4602400`, with
 turnover `2.8373` and Sharpe `-0.5272`. Both were heavily rejected against
 the promoted threshold Ridge `0.2132863`. Linear Ridge with cost-aware
 threshold remains dominant.
+
+The robustness bush tested time-varying portfolio moments, model combination,
+training-label clipping, and adaptive refit cadence. Covariance allocation,
+Ridge/AR blending, and label clipping failed the frozen test. Adaptive-refit
+Ridge scored `0.2751355`, above the prior parent, with maximum drawdown
+`-0.0294`, baseline turnover `0.9990`, and Sharpe `0.7184`. Two tied
+validation optima at refit cadences 40 and 46 reproduced identical frozen
+metrics. Promote adaptive-refit Ridge as the new research parent only; its
+validation score `0.0761147` is below the prior parent and its four test
+windows still contain one positive and three zero-return windows. The
+adaptive-refit covariance child failed with frozen test `-0.0569918`.
 
 ## Historical / Pre-Balanced Stage 2 Screening
 
@@ -287,14 +308,14 @@ architectures remain unstarted.
 Managed CPU launch on server project still returns HTTP 402 `billing_required` /
 `Out of credits` before provisioning. Local `orx up` project provides a working
 CPU backend. Balanced anchor, ten fair model siblings, and local follow-up
-directions answered. Cost-aware threshold Ridge is promoted as research parent;
-robustness gaps still block deployment.
+ directions answered. Adaptive-refit Ridge is promoted as research parent;
+ robustness gaps still block deployment.
 
-Recommendation: **promote cost-aware threshold Ridge for further research,
-paper-trade nothing**. Do not deploy threshold Ridge or any fair ARIMA, ETS,
-cross-asset, or allocation variant. Next valid bush requires independent
-stochastic seeds, regime windows, threshold sensitivity, and formal
-multiple-testing adjustment.
+Recommendation: **promote adaptive-refit Ridge for further research, paper-trade
+nothing**. Do not deploy adaptive-refit Ridge, threshold Ridge, or any fair
+ARIMA, ETS, cross-asset, covariance, or allocation variant. Next valid bush
+requires independent stochastic seeds, regime windows, threshold sensitivity,
+and formal multiple-testing adjustment.
 
 ## Exact Next Commands
 
@@ -302,7 +323,7 @@ multiple-testing adjustment.
 # Local project and answered root:
 orx projects
 orx runs 528668ac-3d0c-414f-ab6f-5316030509e9
-# Continue only with promoted threshold-Ridge robustness checks or a new
+# Continue only with promoted adaptive-refit Ridge robustness checks or a new
 # literature-backed question. Never edit answered branches.
 ```
 

@@ -65,6 +65,16 @@ frozen test `-0.0728067`. An uncertainty abstention gate scored `-0.5483675`.
 Both were rejected against promoted threshold Ridge. Deeper architectures remain
 unstarted.
 
+The next robustness bush tested covariance-aware allocation, Ridge/AR blending,
+training-label clipping, and adaptive Ridge refit cadence. All branches used
+validation-only Optuna with eight trials and preserved the accepted contract.
+The adaptive-refit Ridge child scored frozen test `0.2751355`, versus prior
+threshold Ridge `0.2132863`, with maximum drawdown `-0.0294`, Sharpe `0.7184`,
+and turnover `0.9990`. It is promoted as a research parent only. Its validation
+score was lower (`0.0761147` versus `0.1135487`), one of four frozen windows was
+positive, and the adaptive covariance append failed at `-0.0569918`; these gaps
+block deployment.
+
 ## Evidence Gaps
 
 Promoted candidate has one positive and three zero-return frozen-test windows.

@@ -158,10 +158,41 @@ not archived fair-run anchor artifacts.
 
 TimesFM and Kronos foundation bush is answered and rejected. Deeper architectures
 remain unstarted. Any new bush requires fresh literature evidence, independent
-stochastic evaluation, and completion of promoted threshold robustness checks.
+stochastic evaluation, and completion of promoted adaptive-refit Ridge robustness
+checks.
 Server compute remains credit-blocked.
 
 XGBoost and LightGBM were then tested as cost-aware tree-model children under
 promoted threshold Ridge. XGBoost scored frozen test `-0.4176403`; LightGBM
 scored `-0.4602400`. Both were rejected. Promoted linear Ridge with cost-aware
 threshold remains the single research parent.
+
+## Optuna Audit And Robustness Bush
+
+Ledger now contains 27 experiment rows, 23 rows with declared Optuna studies,
+and every declared study records eight trials. Current and new local SQLite
+artifacts independently contain eight completed trials; historical branch
+databases were overwritten or not retained, so ledger rows remain the only
+record for those past trial executions. `_run_optuna` now caps resumed studies
+at configured `n_trials` instead of appending another eight trials on rerun.
+The Stage 4 confidence route was also restored after a later tree-model commit
+made its branch unreachable; its original answered row came from the earlier
+correct commit.
+
+New literature round: arXiv:2501.12841 motivates time-varying moments and
+turnover-penalized portfolio construction. arXiv:2209.12383 warns that
+transaction costs can erase apparent robust gains. Four new bushes and one
+append were tested with validation-only Optuna and frozen-test scoring:
+
+- Covariance-aware Ridge: validation `0.0745508`, test `-0.2496991`; reject.
+- Ridge/AR blend: validation `0.1135487`, test `0.1946880`; reject below parent.
+- Training-label clipping: validation `-0.0938810`, test `-0.2307729`; reject.
+- Adaptive-refit Ridge: validation `0.0761147`, test `0.2751355`; promote as
+  research parent only. It has lower drawdown and baseline turnover than prior
+  parent, but lower validation score, slightly lower Sharpe, and one positive
+  frozen-test window out of four.
+- Adaptive-refit plus covariance: validation `0.1313989`, test `-0.0569918`;
+  reject.
+
+Adaptive-refit parameters at refit sessions 40 and 46 tied on validation and
+produced identical frozen-test metrics. No deployment or paper trading.

@@ -243,6 +243,22 @@ def build_targets(
         )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
         raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_adaptive_covariance":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+        )
+        raw = _covariance_ridge_targets(
+            predictions,
+            features,
+            risk_aversion=float(params.get("risk_aversion", 1.0)),
+            turnover_penalty=float(params.get("turnover_penalty", 0.01)),
+        )
     elif mode == "ridge_ar_blend":
         ridge = walk_forward_ridge(
             features,

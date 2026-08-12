@@ -190,3 +190,27 @@ Both were comprehensively below promoted threshold Ridge `0.2132863`.
 Tree models cannot extract a tradable signal from these features under
 these costs. Linear Ridge remains the single research parent.
 Paper-trade nothing.
+
+## Robustness Bush
+
+New literature round used arXiv:2501.12841 for time-varying moments and
+turnover-penalized allocation, plus arXiv:2209.12383 for transaction-cost
+robustness cautions. Every branch below used eight validation-only Optuna
+trials and the unchanged frozen-test contract.
+
+- Covariance-aware Ridge allocator: validation `0.0745508`, test `-0.2496991`;
+  rejected.
+- Ridge/AR forecast blend: validation `0.1135487`, test `0.1946880`; rejected
+  below prior parent with higher turnover.
+- Training-label clipping: validation `-0.0938810`, test `-0.2307729`;
+  rejected.
+- Adaptive-refit Ridge: validation `0.0761147`, frozen test `0.2751355`,
+  maximum drawdown `-0.0294`, Sharpe `0.7184`, turnover `0.9990`; promoted as
+  new research parent only. Refit sessions `40` and `46` tied on validation
+  and reproduced identical frozen metrics.
+- Adaptive-refit covariance append: validation `0.1313989`, test `-0.0569918`;
+  rejected despite lower turnover.
+
+Adaptive-refit Ridge beats prior threshold Ridge score `0.2132863` and lowers
+drawdown/turnover, but validation score is lower and frozen test still has one
+positive window out of four. No deployment or paper trading.
