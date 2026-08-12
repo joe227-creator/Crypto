@@ -121,7 +121,9 @@ Fair snapshot anchor `51b44ade-505c-44fc-8ca2-adb724bb9a63`
         ├── Volatility-gated Ridge
         └── Cost-aware threshold Ridge [promoted research candidate]
             ├── TimesFM 2.5 zero-shot [rejected]
-            └── Kronos base zero-shot [rejected]
+            ├── Kronos base zero-shot [rejected]
+            ├── TimesFM-to-Ridge hybrid [rejected]
+            └── TimesFM uncertainty gate [rejected]
 ```
 
 Historical server planning and smoke nodes:
@@ -186,6 +188,8 @@ primary; validation score is selection-only.
 | Cost-aware threshold Ridge | local `ba9dab5` / branch `dc031c4` | 0.1135487 | 0.2132863 | 1.4794 | alpha 0.1527, threshold 0.02682 |
 | TimesFM 2.5 zero-shot | local `84484e5` | 0.1488174 | -0.4697066 | 3.3396 | context 256, threshold 0.01438 |
 | Kronos base zero-shot | local `84484e5` | -0.7314223 | -0.8563088 | 5.1900 | context 256, threshold 0.02735 |
+| TimesFM-to-Ridge hybrid | local Stage 4 child | 0.0335998 | -0.0728067 | 2.1762 | TimesFM feature, alpha 0.1527, threshold 0.02682 |
+| TimesFM uncertainty gate | local Stage 4 child | 0.2775677 | -0.5483675 | 2.5748 | max uncertainty 0.4808, threshold 0.01675 |
 
 Cost-aware threshold Ridge beats fair control score `-0.2189362`, ETH
 buy-and-hold `-0.0746825`, and all prior fair siblings. Test mean rolling return
@@ -205,6 +209,12 @@ Foundation follow-ups were then tested from promoted threshold parent using
 repository-local weights. TimesFM 2.5 scored validation `0.1488174` but frozen
 test `-0.4697066`; Kronos base scored validation `-0.7314223` and frozen test
 `-0.8563088`. Both were rejected after costs.
+
+Stage 4 TimesFM composition was tested next. A causal TimesFM forecast feature
+into Ridge scored validation `0.0335998` and frozen test `-0.0728067`. A
+TimesFM uncertainty abstention gate scored validation `0.2775677` and frozen
+test `-0.5483675`, with high test drawdown and negative Sharpe. Both lost to
+promoted threshold Ridge and were rejected.
 
 ## Historical / Pre-Balanced Stage 2 Screening
 
@@ -254,8 +264,9 @@ repository-local `models/` paths. TimesFM 2.5 zero-shot validation score was
 return `-0.0628`, Sharpe `-0.5150`, and turnover `3.3396`. Kronos base zero-shot
 validation score was `-0.7314223`, frozen-test score `-0.8563088`, mean test
 rolling return `-0.1397`, Sharpe `-0.7259`, and turnover `5.1900`. Both were
-rejected against promoted threshold Ridge. Stage 3 foundation bush is complete
-and rejected; deeper architectures remain unstarted.
+rejected against promoted threshold Ridge. Stage 3 foundation bush and first
+Stage 4 hybrid bush are complete and rejected; deeper LSTM/TCN/Transformer
+architectures remain unstarted.
 
 ## Blocker And Recommendation
 

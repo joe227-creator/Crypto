@@ -18,7 +18,7 @@ def availability_report() -> dict[str, Any]:
 
 def require_available(model: str) -> None:
     report = availability_report()
-    if model == "timesfm" and not report["timesfm_package"]:
+    if model in {"timesfm", "timesfm_confidence", "hybrid_timesfm_ridge"} and not report["timesfm_package"]:
         raise RuntimeError("TimesFM dependency/checkpoint unavailable; refusing silent replacement")
     if model == "kronos" and not report["torch_package"]:
         raise RuntimeError("Kronos requires torch; refusing silent replacement")

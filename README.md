@@ -69,6 +69,8 @@ so no close or on-chain observation from the future can enter a position.
 - Full experiment tree, run IDs, metrics, risks, and stop decision:
   `research/FINAL_REPORT.md`.
 - Chronological run ledger: `research/experiment_ledger.csv`.
+- Stage 4 TimesFM hybrid and uncertainty-gate children were tested and rejected;
+  deeper architectures remain unstarted.
 - Local Stage 3 assets: `models/README.md`; adapters load repository-local
   TimesFM 2.5 and Kronos base/tokenizer files, isolated from shared caches.
 

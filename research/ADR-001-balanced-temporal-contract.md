@@ -60,6 +60,11 @@ Stage 3 foundation siblings used repository-local TimesFM 2.5 and Kronos base
 weights. TimesFM scored frozen test `-0.4697066`; Kronos scored `-0.8563088`.
 Both were rejected after costs. Deeper architectures remain unstarted.
 
+Stage 4 TimesFM composition used one causal forecast feature in Ridge and scored
+frozen test `-0.0728067`. An uncertainty abstention gate scored `-0.5483675`.
+Both were rejected against promoted threshold Ridge. Deeper architectures remain
+unstarted.
+
 ## Evidence Gaps
 
 Promoted candidate has one positive and three zero-return frozen-test windows.

@@ -144,16 +144,51 @@ def walk_forward_timesfm(
             indices.append(pos)
         chunk = 1024
         for base in range(0, len(inputs), chunk):
-            mean, _ = model.forecast(horizon=int(horizon), inputs=inputs[base : base + chunk])
+            mean, quantiles = model.forecast(horizon=int(horizon), inputs=inputs[base : base + chunk])
             for offset, pos in enumerate(indices[base : base + chunk]):
                 last = float(log_close[pos])
                 pred = float(mean[offset][int(horizon) - 1]) - last
+                q = quantiles[offset][int(horizon) - 1]
+                uncertainty = float(np.nanmax(q) - np.nanmin(q))
                 rows.append(
-                    {"date": pd.Timestamp(dates[pos]), "asset": asset, "prediction": pred, "positive": pred > 0.0}
+                    {
+                        "date": pd.Timestamp(dates[pos]),
+                        "asset": asset,
+                        "prediction": pred,
+                        "uncertainty": uncertainty,
+                        "positive": pred > 0.0,
+                    }
                 )
     result = pd.DataFrame(rows)
     _TIMESFM_CACHE[key] = result
     return result
+
+
+def walk_forward_timesfm_ridge(
+    features: pd.DataFrame,
+    feature_columns: list[str],
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    alpha: float,
+    use_onchain: bool,
+    context: int = 256,
+    horizon: int = 5,
+) -> pd.DataFrame:
+    """Causal Ridge meta-layer using TimesFM forecast as one extra feature."""
+    foundation = walk_forward_timesfm(features, signal_dates, config, context=context, horizon=horizon)
+    augmented = features.copy()
+    forecast = foundation[["date", "asset", "prediction"]].rename(columns={"prediction": "timesfm_pred"})
+    augmented = augmented.merge(forecast, on=["date", "asset"], how="left")
+    augmented["timesfm_pred"] = augmented["timesfm_pred"].fillna(0.0)
+    augmented_columns = [*feature_columns, "timesfm_pred"]
+    return walk_forward_ridge(
+        augmented,
+        augmented_columns,
+        signal_dates,
+        config,
+        alpha=alpha,
+        use_onchain=use_onchain,
+    )
 
 
 def _fit_ridge(x: np.ndarray, y: np.ndarray, alpha: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

@@ -132,11 +132,13 @@ def _run_optuna(
     import optuna
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
+    mode = str(config.get("strategy", {}).get("mode", "ridge"))
+    study_name = f"{mode}_validation"
     study_dir = artifact_dir / "optuna"
     study_dir.mkdir(parents=True, exist_ok=True)
-    db_path = study_dir / "study.db"
+    db_path = study_dir / f"{study_name}.db"
     study = optuna.create_study(
-        study_name="ridge_validation",
+        study_name=study_name,
         storage=f"sqlite:///{db_path.resolve()}",
         load_if_exists=True,
         direction="maximize",
@@ -144,7 +146,7 @@ def _run_optuna(
     )
 
     def objective(trial: Any) -> float:
-        mode = str(config.get("strategy", {}).get("mode", "ridge"))
+        mode = str(config.get("strategy", {}).get("mode", "stage0"))
         if mode == "timesfm":
             params = {
                 "threshold": trial.suggest_float("threshold", 0.0, 0.03),
@@ -153,6 +155,19 @@ def _run_optuna(
         elif mode == "kronos":
             params = {
                 "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "context": int(config.get("strategy", {}).get("params", {}).get("context", 256)),
+            }
+        elif mode == "timesfm_confidence":
+            params = {
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "max_uncertainty": trial.suggest_float("max_uncertainty", 0.05, 0.60),
+                "context": int(config.get("strategy", {}).get("params", {}).get("context", 256)),
+            }
+        elif mode == "hybrid_timesfm_ridge":
+            params = {
+                "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
                 "context": int(config.get("strategy", {}).get("params", {}).get("context", 256)),
             }
         elif mode == "ar":
@@ -191,7 +206,7 @@ def _run_optuna(
         writer.writerow(["number", "value", "state", "params"])
         for trial in trials:
             writer.writerow([trial["number"], trial["value"], trial["state"], json.dumps(trial["params"], sort_keys=True)])
-    return {"study": "ridge_validation", "db": str(db_path), "n_trials": len(trials), "best_params": study.best_params, "best_value": study.best_value}
+    return {"study": study_name, "db": str(db_path), "n_trials": len(trials), "best_params": study.best_params, "best_value": study.best_value}
 
 
 def _write_candidate_artifacts(
@@ -280,7 +295,7 @@ def main() -> int:
     availability = availability_report()
     mode, params = _primary_config(config)
 
-    if mode in {"timesfm", "kronos"}:
+    if mode in {"timesfm", "timesfm_confidence", "kronos", "hybrid_timesfm_ridge"}:
         require_available(mode)
 
     stage0_results: list[dict[str, Any]] = []
@@ -307,7 +322,7 @@ def main() -> int:
     _write_json(artifact_dir / "foundation_availability.json", availability)
 
     optuna_result: dict[str, Any] | None = None
-    if bool(config.get("optuna", {}).get("enabled", False)) and mode in {"ridge", "ar", "timesfm", "kronos"}:
+    if bool(config.get("optuna", {}).get("enabled", False)) and mode in {"ridge", "ar", "timesfm", "timesfm_confidence", "kronos", "hybrid_timesfm_ridge"}:
         optuna_result = _run_optuna(market, features, feature_columns, config, baseline_turnover, artifact_dir)
         params = {**params, **optuna_result["best_params"]}
     if mode == "stage0":

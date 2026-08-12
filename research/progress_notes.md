@@ -158,3 +158,17 @@ files only; shared Hugging Face cache is not used.
 
 Stage 3 foundation bush stopped. Threshold Ridge remains promoted research
 parent; deeper architectures remain unstarted. Paper-trade nothing.
+
+## Stage 4 Hybrid Bush
+
+Literature round included arXiv:2607.20002 on TSFM post-training composition,
+uncertainty control, and output processing. TimesFM forecast was appended as one
+causal Ridge feature, then an uncertainty abstention gate was tested.
+
+- TimesFM-to-Ridge hybrid: validation `0.0335998`, frozen test `-0.0728067`,
+  turnover `2.1762`, Sharpe `0.4444`; rejected.
+- TimesFM uncertainty gate: validation `0.2775677`, frozen test `-0.5483675`,
+  turnover `2.5748`, Sharpe `-0.8996`; rejected.
+
+Stage 4 first bush stopped. Promoted threshold Ridge remains research parent;
+deeper architectures remain unstarted. Paper-trade nothing.

@@ -7,7 +7,13 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .models import walk_forward_ar, walk_forward_kronos, walk_forward_ridge, walk_forward_timesfm
+from .models import (
+    walk_forward_ar,
+    walk_forward_kronos,
+    walk_forward_ridge,
+    walk_forward_timesfm,
+    walk_forward_timesfm_ridge,
+)
 
 
 ASSETS = ("BTC", "ETH")
@@ -29,6 +35,15 @@ def _equal_positive(predictions: pd.DataFrame, threshold: float = 0.0) -> pd.Dat
         weights = {asset: (1.0 / len(chosen) if asset in set(chosen["asset"]) else 0.0) for asset in ASSETS}
         rows.append({"date": date, **weights})
     return pd.DataFrame(rows).set_index("date").sort_index()
+
+
+def _apply_uncertainty_gate(predictions: pd.DataFrame, maximum: float) -> pd.DataFrame:
+    if predictions.empty or maximum <= 0.0 or "uncertainty" not in predictions:
+        return predictions
+    gated = predictions.copy()
+    mask = gated["uncertainty"] > maximum
+    gated.loc[mask, "prediction"] = -gated.loc[mask, "prediction"].abs() - 1e-9
+    return gated
 
 
 def _inverse_vol_targets(features: pd.DataFrame, dates: pd.DatetimeIndex) -> pd.DataFrame:
@@ -142,6 +157,32 @@ def build_targets(
             features,
             dates,
             config,
+            context=int(params.get("context", 256)),
+            horizon=int(params.get("horizon", 5)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "timesfm_confidence":
+        predictions = walk_forward_timesfm(
+            features,
+            dates,
+            config,
+            context=int(params.get("context", 256)),
+            horizon=int(params.get("horizon", 5)),
+        )
+        predictions = _apply_uncertainty_gate(
+            predictions, float(params.get("max_uncertainty", 0.0))
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "hybrid_timesfm_ridge":
+        predictions = walk_forward_timesfm_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
             context=int(params.get("context", 256)),
             horizon=int(params.get("horizon", 5)),
         )

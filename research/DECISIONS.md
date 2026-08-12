@@ -134,6 +134,15 @@ and frozen test `-0.4697066`; Kronos base zero-shot scored validation `-0.731422
 and frozen test `-0.8563088`. Both lost after costs and were rejected. Model
 files are isolated under `models/`; adapters do not use shared cache paths.
 
+Stage 4 TimesFM composition then tested one causal forecast feature in Ridge:
+validation `0.0335998`, frozen test `-0.0728067`, mean test rolling return
+`0.0201`, maximum drawdown `-0.0756`, Sharpe `0.4444`, and turnover `2.1762`.
+An uncertainty abstention gate scored validation `0.2775677` and frozen test
+`-0.5483675`, with turnover `2.5748`, maximum drawdown `-0.4704`, and Sharpe
+`-0.8996`. Both were rejected against promoted
+threshold Ridge. First Stage 4 bush is closed; deeper architectures remain
+unstarted.
+
 Promoted threshold result has one positive and three zero-return test windows;
 seed score spread is zero because implementation is deterministic. Repeated seed
 rows are not independent stochastic evidence. Regime slices, threshold
