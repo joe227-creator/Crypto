@@ -86,6 +86,15 @@ was identical; an 80/20 conformal calibration gate scored `-0.2809`. These
 results preserve contract but leave strong selection and regime-concentration
 gaps. No deployment.
 
+Expanded neural and foundation tests preserved contract. Causal LSTM scored
+frozen test `-0.1157`, TCN `-0.7860`, Transformer `-0.4588`, and static TimesFM
+point-head fine-tuning `-0.5189`; none beat residual-gate Ridge on robustness.
+Dynamic TimesFM fine-tuning exceeded runtime budget after partial Optuna
+execution and has no scientific result. Residual-gate multiplier sensitivity
+was severe, but mid-range `0.15` and `0.20` settings scored `0.3202` and
+`0.2751`; doubled fee/slippage at `0.15` scored `0.2561`. These results support
+continued research only, not deployment.
+
 ## Evidence Gaps
 
 Promoted candidate has one positive and three zero-return frozen-test windows.

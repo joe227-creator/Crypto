@@ -233,3 +233,23 @@ branches used eight validation-only Optuna trials under unchanged contract.
 Residual gate validation search was fragile: seven trials scored `-0.1200`, one
 scored `0.0761`. Fixed no-uncertainty ablation collapsed to frozen test
 `-0.4634`. One of four test windows was positive. No deployment or paper trading.
+
+## Neural And Foundation Expansion
+
+No-cost-cap PyTorch sequence bush used train-only scaling, causal masks where
+needed, expanding per-asset fits, 21-session refits, and eight Optuna trials.
+
+- LSTM: validation `-0.0941`, frozen test `-0.1157`, max drawdown `-0.1669`,
+  Sharpe `0.2666`, turnover `2.5437`; rejected despite beating fair control.
+- TCN: validation `-0.0666`, frozen test `-0.7860`, max drawdown `-0.7210`,
+  Sharpe `-0.6958`, turnover `4.9757`; rejected.
+- Transformer: validation `0.0890`, frozen test `-0.4588`, max drawdown
+  `-0.3739`, Sharpe `-0.0949`, turnover `4.2989`; rejected.
+- Static TimesFM point-head fine-tune: validation `0.0372`, frozen test
+  `-0.5189`; rejected. Dynamic head fine-tune timed out after two completed
+  trials and one running trial; no result promoted.
+
+Residual-gate fixed-setting sensitivity: multiplier `0.05` test `-0.3514`,
+`0.10` `-0.1933`, `0.15` `0.3202`, `0.20` `0.2751`, `0.30` `-0.2809`.
+Doubled fee/slippage at `0.15` retained test `0.2561`. Mid-range settings beat
+control, but parameter sensitivity blocks deployment.

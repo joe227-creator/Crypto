@@ -132,9 +132,13 @@ Fair snapshot anchor `51b44ade-505c-44fc-8ca2-adb724bb9a63`
             ├── Ridge label clipping [rejected]
             └── Adaptive-refit Ridge [promoted research candidate]
                 ├── Adaptive-refit covariance allocator [rejected]
-                ├── Residual uncertainty Ridge gate [promoted research candidate]
-                ├── Residual signal-to-noise sizing [rejected]
-                └── Conformal residual calibration gate [rejected]
+                └── Residual uncertainty Ridge gate [promoted research candidate]
+                    ├── Residual signal-to-noise sizing [rejected]
+                    ├── Conformal residual calibration gate [rejected]
+                    ├── LSTM sequence model [rejected]
+                    ├── TCN sequence model [rejected]
+                    ├── Transformer sequence model [rejected]
+                    └── Static TimesFM head fine-tune [rejected]
 ```
 
 Historical server planning and smoke nodes:
@@ -211,6 +215,10 @@ primary; validation score is selection-only.
 | Residual uncertainty Ridge gate | local residual child | 0.0761147 | 0.3901627 | 1.0662 | alpha 0.1527, refit 81, residual multiplier 0.1445, threshold 0.01335 |
 | Residual signal-to-noise sizing | local residual child | 0.0761147 | 0.3901627 | 1.0662 | same selected parameters; identical targets |
 | Conformal residual calibration gate | local residual child | -0.1200000 | -0.2809118 | 0.9990 | refit 40, quantile 0.9786, multiplier 0.1778, threshold 0.01438 |
+| LSTM sequence model | local neural child | -0.0940646 | -0.1157370 | 2.5437 | hidden 64, lr 0.000601, epochs 4, threshold 0.02350 |
+| TCN sequence model | local neural child | -0.0665626 | -0.7859552 | 4.9757 | hidden 16, lr 0.000459, epochs 5, threshold 0.00708 |
+| Transformer sequence model | local neural child | 0.0889865 | -0.4587975 | 4.2989 | hidden 64, lr 0.003289, epochs 4, threshold 0.00772 |
+| Static TimesFM head fine-tune | local foundation child | 0.0371503 | -0.5188694 | 2.1190 | context 256, lr 0.00000138, steps 2, threshold 0.02048 |
 
 Cost-aware threshold Ridge beats fair control score `-0.2189362`, ETH
 buy-and-hold `-0.0746825`, and all prior fair siblings. Test mean rolling return
@@ -266,6 +274,19 @@ selection was fragile: seven of eight trials scored `-0.1200`, one scored
 `0.0761`; only one of four test windows was positive. Promote for research
 robustness checks only. Residual sizing produced identical targets, while a
 calibrated 80/20 conformal residual gate failed at `-0.2809`.
+
+No-cost-cap neural expansion tested causal LSTM, TCN, and Transformer branches.
+LSTM beat fair control at `-0.1157` but failed parent on drawdown, Sharpe, and
+turnover. TCN scored `-0.7860`; Transformer scored `-0.4588`. Static TimesFM
+point-head fine-tuning scored `-0.5189` after eight Optuna trials. Dynamic
+TimesFM fine-tuning exceeded 15 minutes after two completed trials and one
+running trial; no result used for promotion.
+
+Residual-gate sensitivity was predeclared after promotion: multiplier `0.05`
+scored `-0.3514`, `0.10` scored `-0.1933`, `0.15` scored `0.3202`, `0.20`
+scored `0.2751`, and `0.30` scored `-0.2809`. Doubled fee/slippage stress at
+multiplier `0.15` still scored `0.2561`. Candidate beats control across useful
+mid-range settings and cost stress, but remains highly parameter-sensitive.
 
 ## Historical / Pre-Balanced Stage 2 Screening
 

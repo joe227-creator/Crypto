@@ -207,3 +207,15 @@ trial scored `0.0761`, and one of four test windows was positive. Removing
 uncertainty penalty at identical model settings scored `-0.4634` on frozen test.
 Residual signal-to-noise sizing produced identical targets. An 80/20 conformal
 calibration gate scored frozen test `-0.2809`; both children were rejected.
+
+No-cost-cap neural and foundation round then ran. LSTM scored frozen test
+`-0.1157370`, TCN `-0.7859552`, Transformer `-0.4587975`, and static TimesFM
+point-head fine-tuning `-0.5188694`; all were rejected against residual-gate
+Ridge. Dynamic TimesFM head fine-tuning timed out after two completed Optuna
+trials and one running trial, so it has no scientific result and no promotion.
+
+Residual-gate sensitivity at fixed selected alpha/refit/threshold produced test
+scores `-0.3514` at multiplier `0.05`, `-0.1933` at `0.10`, `0.3202` at `0.15`,
+`0.2751` at `0.20`, and `-0.2809` at `0.30`. Doubling fee and slippage at
+multiplier `0.15` retained test score `0.2561`. Mid-range gate settings beat
+control; sharp edges remain explicit robustness gap. No deployment.
