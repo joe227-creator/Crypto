@@ -222,7 +222,8 @@ def _load_kronos_trainable() -> tuple[Any, Any, Any]:
     root = _Path(__file__).resolve().parents[1] / "external" / "kronos"
     if str(root) not in _sys.path:
         _sys.path.insert(0, str(root))
-    from model import Kronos, KronosPredictor, KronosTokenizer, calc_time_stamps
+    from model import Kronos, KronosPredictor, KronosTokenizer
+    from model.kronos import calc_time_stamps
 
     model_root = Path(__file__).resolve().parents[1] / "models"
     tokenizer = KronosTokenizer.from_pretrained(
