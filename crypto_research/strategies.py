@@ -10,9 +10,12 @@ import pandas as pd
 from .models import (
     walk_forward_ar,
     walk_forward_kronos,
+    walk_forward_kronos_finetune,
     walk_forward_kronos_finetune_static,
     walk_forward_lightgbm,
     walk_forward_lstm,
+    walk_forward_lstm_gate,
+    walk_forward_lstm_gate_norm,
     walk_forward_ridge,
     walk_forward_timesfm_finetune,
     walk_forward_timesfm,
@@ -103,6 +106,24 @@ def _blend_predictions(
     merged["prediction"] = (
         float(ridge_weight) * merged["ridge_prediction"]
         + (1.0 - float(ridge_weight)) * merged["ar_prediction"]
+    )
+    merged["positive"] = merged["prediction"] > 0.0
+    return merged[["date", "asset", "prediction", "positive"]]
+
+
+def _blend_ridge_lstm(
+    ridge: pd.DataFrame,
+    lstm: pd.DataFrame,
+    ridge_weight: float,
+) -> pd.DataFrame:
+    if ridge.empty or lstm.empty:
+        return pd.DataFrame(columns=["date", "asset", "prediction", "positive"])
+    left = ridge[["date", "asset", "prediction"]].rename(columns={"prediction": "ridge_prediction"})
+    right = lstm[["date", "asset", "prediction"]].rename(columns={"prediction": "lstm_prediction"})
+    merged = left.merge(right, on=["date", "asset"], how="inner")
+    merged["prediction"] = (
+        float(ridge_weight) * merged["ridge_prediction"]
+        + (1.0 - float(ridge_weight)) * merged["lstm_prediction"]
     )
     merged["positive"] = merged["prediction"] > 0.0
     return merged[["date", "asset", "prediction", "positive"]]
@@ -339,6 +360,210 @@ def build_targets(
         )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
         raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_gate_rolling":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+            window_sessions=int(params.get("window_sessions", 750)),
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_gate_mad":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+            uncertainty_estimator="mad",
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "xgboost_residual_gate":
+        predictions = walk_forward_xgboost(
+            features,
+            feature_columns,
+            dates,
+            config,
+            n_estimators=int(params.get("n_estimators", 200)),
+            max_depth=int(params.get("max_depth", 6)),
+            learning_rate=float(params.get("learning_rate", 0.1)),
+            subsample=float(params.get("subsample", 0.8)),
+            colsample_bytree=float(params.get("colsample_bytree", 0.8)),
+            reg_alpha=float(params.get("reg_alpha", 0.0)),
+            reg_lambda=float(params.get("reg_lambda", 1.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            return_uncertainty=True,
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_gate_scaled":
+        scaled = features.copy()
+        for column in feature_columns:
+            scaled[column] = scaled.groupby("asset")[column].transform(
+                lambda series: (series - series.rolling(252, min_periods=63).mean())
+                / series.rolling(252, min_periods=63).std().replace(0.0, np.nan)
+            )
+        predictions = walk_forward_ridge(
+            scaled,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "lstm_onchain":
+        predictions = walk_forward_lstm(
+            features,
+            feature_columns,
+            dates,
+            config,
+            hidden_size=int(params.get("hidden_size", 32)),
+            learning_rate=float(params.get("learning_rate", 0.001)),
+            weight_decay=float(params.get("weight_decay", 0.0001)),
+            epochs=int(params.get("epochs", 4)),
+            context=int(params.get("context", 32)),
+            use_onchain=bool(params.get("use_onchain", True)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_gate_momentum":
+        momentum_columns = [*feature_columns, "ret_252_skip_21"]
+        predictions = walk_forward_ridge(
+            features,
+            momentum_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_gate_momentum_z":
+        augmented = features.copy()
+        momentum = augmented.groupby("asset")["ret_252_skip_21"].transform(
+            lambda series: (series - series.rolling(252, min_periods=63).mean())
+            / series.rolling(252, min_periods=63).std().replace(0.0, np.nan)
+        )
+        augmented["momentum_12_1_z"] = momentum
+        momentum_columns = [*feature_columns, "momentum_12_1_z"]
+        predictions = walk_forward_ridge(
+            augmented,
+            momentum_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "lstm_residual_gate":
+        predictions = walk_forward_lstm_gate(
+            features,
+            feature_columns,
+            dates,
+            config,
+            hidden_size=int(params.get("hidden_size", 32)),
+            learning_rate=float(params.get("learning_rate", 0.001)),
+            weight_decay=float(params.get("weight_decay", 0.0001)),
+            epochs=int(params.get("epochs", 4)),
+            context=int(params.get("context", 32)),
+            use_onchain=bool(params.get("use_onchain", False)),
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "lstm_residual_gate_norm":
+        predictions = walk_forward_lstm_gate_norm(
+            features,
+            feature_columns,
+            dates,
+            config,
+            hidden_size=int(params.get("hidden_size", 32)),
+            learning_rate=float(params.get("learning_rate", 0.001)),
+            weight_decay=float(params.get("weight_decay", 0.0001)),
+            epochs=int(params.get("epochs", 4)),
+            context=int(params.get("context", 32)),
+            use_onchain=bool(params.get("use_onchain", False)),
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_lstm_blend":
+        ridge = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+        )
+        ridge = _residual_gate(
+            ridge,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        lstm = walk_forward_lstm(
+            features,
+            feature_columns,
+            dates,
+            config,
+            hidden_size=int(params.get("hidden_size", 32)),
+            learning_rate=float(params.get("learning_rate", 0.001)),
+            weight_decay=float(params.get("weight_decay", 0.0001)),
+            epochs=int(params.get("epochs", 4)),
+            context=int(params.get("context", 32)),
+            use_onchain=bool(params.get("use_onchain", False)),
+        )
+        predictions = _blend_ridge_lstm(
+            ridge,
+            lstm,
+            float(params.get("ridge_weight", 0.5)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
     elif mode == "ridge_residual_size":
         predictions = walk_forward_ridge(
             features,
@@ -501,6 +726,19 @@ def build_targets(
         )
         predictions = _apply_uncertainty_gate(
             predictions, float(params.get("max_uncertainty", 0.0))
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "kronos_finetune":
+        predictions = walk_forward_kronos_finetune(
+            features,
+            dates,
+            config,
+            context=int(params.get("context", 128)),
+            learning_rate=float(params.get("learning_rate", 1e-5)),
+            steps=int(params.get("steps", 1)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+            horizon=int(params.get("horizon", 5)),
         )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
         raw = _equal_positive(predictions, threshold=threshold)

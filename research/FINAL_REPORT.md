@@ -374,3 +374,20 @@ orx runs 528668ac-3d0c-414f-ab6f-5316030509e9
 Re-read all terminal runs after each wait tick. Analyze `EVAL.md` before
 creating or promoting next bush. Never edit answered node; never change
 `bash measure.sh`, score, costs, labels, splits, or thresholds.
+
+## Gate Append And Ablation Round (Conclusion)
+
+The residual-gate Ridge parent was stress-tested with ten append/ablation
+children and one dynamic-fine-tune repair; all were rejected. Raw and z-scored
+12-1 momentum, feature standardization, MAD gate scale, and rolling-window Ridge
+all degraded the parent. Ridge+LSTM blend and LSTM-on-chain overfit validation
+then reversed on the frozen test. LSTM residual gates (raw and normalized)
+suppressed all signal. XGBoost residual gate and dynamic TimesFM fine-tune both
+failed the frozen test. Dynamic Kronos fine-tune was aborted pre-answer and is
+left provisional. Optuna parameter wiring was verified clean for every branch.
+
+The residual-gate Ridge remains the sole research parent, with its known
+robustness gaps (one positive frozen-test window, sharp multiplier sensitivity,
+deterministic seeds) unchanged. No untried hypothesis worth further compute
+remains on this direction. Recommendation stands: promote nothing to
+deployment, paper-trade nothing.

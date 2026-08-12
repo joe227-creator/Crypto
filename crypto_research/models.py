@@ -361,6 +361,87 @@ def walk_forward_kronos_finetune_static(
     return pd.DataFrame(rows)
 
 
+def walk_forward_kronos_finetune(
+    features: pd.DataFrame,
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    context: int = 128,
+    learning_rate: float = 1e-5,
+    steps: int = 1,
+    refit_sessions: int = 21,
+    horizon: int = 5,
+) -> pd.DataFrame:
+    """Dynamic causal fine-tuning of the Kronos head at each refit boundary."""
+    import gc
+    import torch
+
+    evaluation = config["evaluation"]
+    embargo = int(evaluation.get("embargo_sessions", 1))
+    rows: list[dict[str, Any]] = []
+    for asset in config["data"]["assets"]:
+        model, tokenizer, helpers = _load_kronos_trainable()
+        predictor_type, calc_time_stamps, device = helpers
+        predictor = predictor_type(model=model, tokenizer=tokenizer, max_context=512, device=str(device))
+        asset_rows = features[features["asset"].eq(asset)].sort_values("date").copy()
+        asset_rows["date"] = pd.to_datetime(asset_rows["date"])
+        dates = pd.DatetimeIndex(asset_rows["date"])
+        bars = asset_rows[["open", "high", "low", "close", "volume"]].to_numpy(dtype=float)
+        amount = bars[:, 4:5] * bars[:, :4].mean(axis=1, keepdims=True)
+        full_bars = np.concatenate([bars, amount], axis=1)
+        signal_set = set(pd.Timestamp(d).normalize() for d in signal_dates)
+        last_fit_position = -int(refit_sessions)
+        position = context - 1
+        while position < len(dates):
+            date = dates[position]
+            if date not in signal_set:
+                position += 1
+                continue
+            if position - last_fit_position >= int(refit_sessions):
+                max_index = position - int(embargo) - int(horizon)
+                candidates = [i for i in range(int(context) - 1, max_index + 1)][-128:]
+                samples: list[tuple[np.ndarray, pd.DatetimeIndex]] = []
+                for index in candidates:
+                    start = index - int(context) + 1
+                    values = full_bars[start : index + 1 + int(horizon)].copy()
+                    mean = values[: int(context)].mean(axis=0)
+                    scale = values[: int(context)].std(axis=0)
+                    scale[scale < 1e-5] = 1.0
+                    values = np.clip((values - mean) / (scale + 1e-5), -5.0, 5.0).astype(np.float32)
+                    samples.append((values, dates[start : index + 1 + int(horizon)]))
+                if len(samples) >= 16:
+                    _fine_tune_kronos_head(model, tokenizer, samples, learning_rate, steps, calc_time_stamps, device)
+                    last_fit_position = position
+            batch: list[tuple[int, pd.Timestamp]] = []
+            cursor = position
+            while cursor < len(dates) and cursor - position < 32:
+                candidate = dates[cursor]
+                if candidate in signal_set:
+                    batch.append((cursor, candidate))
+                cursor += 1
+            dfs: list[pd.DataFrame] = []
+            x_stamps: list[pd.Series] = []
+            y_stamps: list[pd.Series] = []
+            for index, _ in batch:
+                start = index - int(context) + 1
+                idx = pd.DatetimeIndex(dates[start : index + 1])
+                dfs.append(pd.DataFrame(bars[start : index + 1], columns=["open", "high", "low", "close", "volume"], index=idx))
+                x_stamps.append(pd.Series(idx))
+                y_stamps.append(pd.Series(pd.date_range(idx[-1] + pd.Timedelta(days=1), periods=int(horizon), freq="D")))
+            if dfs:
+                forecasts = predictor.predict_batch(dfs, x_stamps, y_stamps, pred_len=int(horizon), sample_count=1, verbose=False)
+                for (index, date), forecast in zip(batch, forecasts):
+                    last_actual = float(bars[index, 3])
+                    pred_close = float(forecast["close"].iloc[-1])
+                    prediction = np.log(pred_close) - np.log(last_actual) if pred_close > 0 and last_actual > 0 else 0.0
+                    rows.append({"date": date, "asset": asset, "prediction": float(prediction), "positive": prediction > 0.0})
+            position = cursor
+        del predictor, model, tokenizer
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    return pd.DataFrame(rows)
+
+
 def walk_forward_kronos(
     features: pd.DataFrame,
     signal_dates: pd.DatetimeIndex,
@@ -619,6 +700,8 @@ def _walk_forward_neural(
     epochs: int,
     context: int,
     use_onchain: bool,
+    return_uncertainty: bool = False,
+    normalize_uncertainty: bool = False,
 ) -> pd.DataFrame:
     import torch
 
@@ -677,22 +760,39 @@ def _walk_forward_neural(
                         weight_decay,
                         epochs,
                     )
+                    uncertainty = None
+                    if return_uncertainty:
+                        with torch.no_grad():
+                            fitted = model_state[0](
+                                torch.as_tensor(
+                                    (sequences[positions].astype(float) - model_state[1]) / model_state[2],
+                                    dtype=torch.float32,
+                                    device=model_state[3],
+                                )
+                            ).detach().cpu().numpy()
+                        residuals = labels[positions] - fitted
+                        uncertainty = float(np.std(residuals))
+                        if normalize_uncertainty:
+                            denom = float(np.std(labels[positions]))
+                            uncertainty = uncertainty / denom if denom > 0.0 else 0.0
+                    model_state = (model_state[0], model_state[1], model_state[2], model_state[3], uncertainty)
                     last_fit_index = signal_index
             if model_state is None or not valid_sequences[asset_position]:
                 continue
-            model, mean, scale, device = model_state
+            model, mean, scale, device, uncertainty = model_state
             current_sequence = (sequences[asset_position].astype(float) - mean) / scale
             tensor = torch.as_tensor(current_sequence[None, ...], dtype=torch.float32, device=device)
             with torch.no_grad():
                 prediction = float(model(tensor).detach().cpu().item())
-            rows.append(
-                {
-                    "date": signal_date,
-                    "asset": asset,
-                    "prediction": prediction,
-                    "positive": prediction > 0.0,
-                }
-            )
+            row = {
+                "date": signal_date,
+                "asset": asset,
+                "prediction": prediction,
+                "positive": prediction > 0.0,
+            }
+            if uncertainty is not None:
+                row["uncertainty"] = uncertainty
+            rows.append(row)
     return pd.DataFrame(rows)
 
 
@@ -711,6 +811,45 @@ def walk_forward_lstm(
     return _walk_forward_neural(
         "lstm", features, feature_columns, signal_dates, config,
         hidden_size, learning_rate, weight_decay, epochs, context, use_onchain,
+    )
+
+
+def walk_forward_lstm_gate(
+    features: pd.DataFrame,
+    feature_columns: list[str],
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    hidden_size: int = 32,
+    learning_rate: float = 0.001,
+    weight_decay: float = 0.0001,
+    epochs: int = 4,
+    context: int = 32,
+    use_onchain: bool = False,
+) -> pd.DataFrame:
+    return _walk_forward_neural(
+        "lstm", features, feature_columns, signal_dates, config,
+        hidden_size, learning_rate, weight_decay, epochs, context, use_onchain,
+        return_uncertainty=True,
+    )
+
+
+def walk_forward_lstm_gate_norm(
+    features: pd.DataFrame,
+    feature_columns: list[str],
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    hidden_size: int = 32,
+    learning_rate: float = 0.001,
+    weight_decay: float = 0.0001,
+    epochs: int = 4,
+    context: int = 32,
+    use_onchain: bool = False,
+) -> pd.DataFrame:
+    return _walk_forward_neural(
+        "lstm", features, feature_columns, signal_dates, config,
+        hidden_size, learning_rate, weight_decay, epochs, context, use_onchain,
+        return_uncertainty=True,
+        normalize_uncertainty=True,
     )
 
 
@@ -763,6 +902,7 @@ def walk_forward_xgboost(
     reg_alpha: float = 0.0,
     reg_lambda: float = 1.0,
     use_onchain: bool = True,
+    return_uncertainty: bool = False,
 ) -> pd.DataFrame:
     """Causal XGBoost per-asset, expanding-window, same features as Ridge."""
     import xgboost as _xgb
@@ -780,6 +920,7 @@ def walk_forward_xgboost(
         asset_rows = features[features["asset"].eq(asset)].sort_values("date").copy()
         asset_dates = pd.DatetimeIndex(asset_rows["date"])
         model: Any | None = None
+        uncertainty = 0.0
         last_fit_index = -refit_sessions
         for signal_index, signal_date in enumerate(signal_dates):
             current = asset_rows[asset_rows["date"].eq(signal_date)]
@@ -815,6 +956,9 @@ def walk_forward_xgboost(
                         random_state=2026,
                     )
                     model.fit(x, y)
+                    if return_uncertainty:
+                        residuals = y - model.predict(x)
+                        uncertainty = max(float(np.std(residuals, ddof=0)), 1e-6)
                     last_fit_index = signal_index
             if model is None:
                 continue
@@ -822,9 +966,10 @@ def walk_forward_xgboost(
             if not np.isfinite(x_now).all():
                 continue
             prediction = float(model.predict(x_now)[0])
-            rows.append(
-                {"date": signal_date, "asset": asset, "prediction": prediction, "positive": prediction > 0.0}
-            )
+            row = {"date": signal_date, "asset": asset, "prediction": prediction, "positive": prediction > 0.0}
+            if return_uncertainty:
+                row["uncertainty"] = uncertainty
+            rows.append(row)
     return pd.DataFrame(rows)
 
 
@@ -917,6 +1062,8 @@ def walk_forward_ridge(
     refit_sessions: int | None = None,
     calibration_fraction: float | None = None,
     uncertainty_quantile: float = 0.9,
+    uncertainty_estimator: str = "std",
+    window_sessions: int | None = None,
 ) -> pd.DataFrame:
     """Predict each asset using only labels ending before current signal date."""
     selected_features = [c for c in feature_columns if use_onchain or not c.startswith("onchain_")]
@@ -945,8 +1092,14 @@ def walk_forward_ridge(
                     continue
                 label_cutoff = asset_dates[cutoff_position]
                 training_end = train_end if signal_date <= validation_end else signal_date
+                train_start_eff = train_start
+                if window_sessions is not None and int(window_sessions) > 0:
+                    train_start_eff = max(
+                        train_start,
+                        asset_dates[max(0, asset_position - int(window_sessions))],
+                    )
                 train = asset_rows[
-                    (asset_rows["date"] >= train_start)
+                    (asset_rows["date"] >= train_start_eff)
                     & (asset_rows["date"] < signal_date)
                     & (asset_rows["date"] <= training_end)
                     & (asset_rows["label_end_date"] < label_cutoff)
@@ -974,7 +1127,11 @@ def walk_forward_ridge(
                         )
                     else:
                         residuals = y - _predict(model, x)
-                        uncertainty = max(float(np.std(residuals, ddof=0)), 1e-6)
+                        if str(uncertainty_estimator) == "mad":
+                            scale = float(np.median(np.abs(residuals - np.median(residuals))))
+                            uncertainty = max(scale * 1.4826, 1e-6)
+                        else:
+                            uncertainty = max(float(np.std(residuals, ddof=0)), 1e-6)
                     last_fit_index = signal_index
             if model is None:
                 continue

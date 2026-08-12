@@ -226,3 +226,17 @@ pre-validation OHLCV paths. Six of eight Optuna trials completed; two became
 timeout-stale. Best validation trial scored `-0.6672`; selected rerun scored
 validation `-0.7022`, frozen test `-0.7654`, maximum drawdown `-0.6107`, Sharpe
 `-0.4848`, and turnover `5.4815`. Fine-tuning did not rescue Kronos. Reject.
+
+Gate append-and-ablation round descended on the residual-gate Ridge parent.
+Ten answered children and one dynamic-fine-tune repair were all rejected against
+the parent. Raw 12-1 momentum append, z-scored momentum append, trailing-252d
+feature standardization, MAD gate scale, and rolling-window Ridge all lost to the
+parent (flat-cash or below-parent validation). Ridge+LSTM blend and LSTM with
+on-chain features overfit validation (`0.2610` and `0.4813`) then reversed on
+frozen test (`-0.2898` and `-0.1701`). LSTM residual gates, raw and normalized,
+suppressed all signal. XGBoost residual gate scored validation `-0.0538`, frozen
+test `-0.1584`. Dynamic TimesFM fine-tune repair scored frozen test `-0.7170`.
+Dynamic Kronos fine-tune was aborted before answering and remains provisional,
+deemed low-value given the static/zero-shot/dynamic-TimesFM failure chain.
+Optuna wiring was verified clean for every machine-learning branch. No child beat
+the residual-gate Ridge; the direction is exhausted and the tree plateaus.

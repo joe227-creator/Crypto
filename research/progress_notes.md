@@ -259,3 +259,27 @@ OHLCV paths. Six of eight Optuna trials completed; two became timeout-stale.
 Best validation trial scored `-0.6672`; selected rerun scored frozen test
 `-0.7654`, maximum drawdown `-0.6107`, Sharpe `-0.4848`, and turnover `5.4815`.
 Rejected. Fine-tuning did not rescue zero-shot Kronos.
+
+## Gate Append And Ablation Round (no-cost-cap)
+
+Descended on the residual-gate Ridge parent. Ten answered children plus one
+dynamic-fine-tune repair; all rejected, parent remains champion.
+
+- Raw 12-1 momentum append (`ret_252_skip_21`): flat cash, zero trades, even at
+  parent's best alpha/refit/threshold.
+- Z-scored momentum append: best validation `-0.0248`, frozen test `-0.1200`.
+- Trailing-252d feature standardization: flat cash, zero trades.
+- MAD robust gate scale: best validation `-0.0802`, frozen test `-0.1200`.
+- Rolling-window (regime-adaptive) Ridge: flat cash; expanding window dominates.
+- Ridge+LSTM blend: validation `0.2610`, frozen test `-0.2898` (overfit).
+- LSTM residual gate (raw scale): flat; normalized-by-label-scale: flat.
+- LSTM with lagged on-chain features: validation `0.4813`, frozen test `-0.1701` (overfit).
+- XGBoost residual gate: validation `-0.0538`, frozen test `-0.1584`.
+- Dynamic TimesFM head fine-tune (repair of timed-out node): validation `0.0131`,
+  frozen test `-0.7170`.
+- Dynamic Kronos head fine-tune: aborted before an answer; left provisional.
+
+Optuna wiring verified programmatically: every `suggest_*` parameter is consumed
+by the strategy, no orphan names, and stale `RUNNING` rows were cleared from the
+TimesFM and Kronos study databases. No child beat the residual-gate Ridge parent;
+the tree has plateaued.

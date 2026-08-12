@@ -2,7 +2,10 @@
   "data": {
     "start_date": "2018-01-01",
     "end_date": "2026-08-11",
-    "assets": ["BTC", "ETH"],
+    "assets": [
+      "BTC",
+      "ETH"
+    ],
     "price_source": "yahoo",
     "onchain_source": "coinmetrics",
     "refresh": false,
@@ -26,12 +29,18 @@
     "min_train_days": 365,
     "refit_sessions": 21,
     "embargo_sessions": 1,
-    "seeds": [11, 22, 33, 44, 55]
+    "seeds": [
+      11,
+      22,
+      33,
+      44,
+      55
+    ]
   },
   "strategy": {
-    "mode": "ridge",
+    "mode": "ridge_residual_gate",
     "params": {
-      "use_onchain": false,
+      "use_onchain": true,
       "threshold": 0.0
     }
   },

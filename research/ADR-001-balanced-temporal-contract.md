@@ -101,6 +101,15 @@ timeouts. Selected rerun scored frozen test `-0.7654`, maximum drawdown
 `-0.6107`, Sharpe `-0.4848`, and turnover `5.4815`; fine-tuning did not rescue
 zero-shot Kronos. Reject without changing accepted contract.
 
+A final gate append-and-ablation round descended on residual-gate Ridge. Raw and
+z-scored 12-1 momentum, trailing-252d feature standardization, MAD gate scale,
+and rolling-window Ridge all lost to the parent. Ridge+LSTM blend and
+LSTM-on-chain overfit validation then reversed on the frozen test. LSTM residual
+gates (raw and normalized) suppressed all signal. XGBoost residual gate and
+dynamic TimesFM fine-tune both failed the frozen test; dynamic Kronos fine-tune
+was aborted before an answer. Optuna wiring verified clean for every branch. No
+child beat the parent, confirming the accepted contract while the tree plateaus.
+
 ## Evidence Gaps
 
 Promoted candidate has one positive and three zero-return frozen-test windows.
