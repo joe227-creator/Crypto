@@ -181,6 +181,35 @@ def _run_optuna(
                 "threshold": trial.suggest_float("threshold", 0.0, 0.03),
                 "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
             }
+        elif mode == "ridge_covariance":
+            params = {
+                "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
+                "risk_aversion": trial.suggest_float("risk_aversion", 0.0, 50.0),
+                "turnover_penalty": trial.suggest_float("turnover_penalty", 0.0, 0.1),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
+            }
+        elif mode == "ridge_label_clip":
+            params = {
+                "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
+                "label_clip": trial.suggest_float("label_clip", 0.005, 0.20, log=True),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
+            }
+        elif mode == "ridge_adaptive_refit":
+            params = {
+                "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
+                "refit_sessions": trial.suggest_int("refit_sessions", 5, 90),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
+            }
+        elif mode == "ridge_ar_blend":
+            params = {
+                "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
+                "ridge_weight": trial.suggest_float("ridge_weight", 0.0, 1.0),
+                "horizon": trial.suggest_int("horizon", 1, 21),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
+            }
         elif mode == "timesfm_confidence":
             params = {
                 "threshold": trial.suggest_float("threshold", 0.0, 0.03),
@@ -213,7 +242,12 @@ def _run_optuna(
         return value
 
     n_trials = int(config["optuna"].get("n_trials", 8))
-    study.optimize(objective, n_trials=n_trials, n_jobs=1)
+    remaining_trials = max(0, n_trials - len(study.trials))
+    if remaining_trials:
+        study.optimize(objective, n_trials=remaining_trials, n_jobs=1)
+    completed_trials = [trial for trial in study.trials if trial.state.name == "COMPLETE"]
+    if not completed_trials:
+        raise RuntimeError(f"Optuna study has no completed trials: {study_name}")
     trials = [
         {
             "number": trial.number,
@@ -346,7 +380,7 @@ def main() -> int:
     _write_json(artifact_dir / "foundation_availability.json", availability)
 
     optuna_result: dict[str, Any] | None = None
-    if bool(config.get("optuna", {}).get("enabled", False)) and mode in {"ridge", "ar", "timesfm", "timesfm_confidence", "kronos", "hybrid_timesfm_ridge", "xgboost", "lightgbm"}:
+    if bool(config.get("optuna", {}).get("enabled", False)) and mode in {"ridge", "ridge_covariance", "ridge_label_clip", "ridge_adaptive_refit", "ridge_ar_blend", "ar", "timesfm", "timesfm_confidence", "kronos", "hybrid_timesfm_ridge", "xgboost", "lightgbm"}:
         optuna_result = _run_optuna(market, features, feature_columns, config, baseline_turnover, artifact_dir)
         params = {**params, **optuna_result["best_params"]}
     if mode == "stage0":

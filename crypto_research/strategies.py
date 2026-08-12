@@ -39,6 +39,70 @@ def _equal_positive(predictions: pd.DataFrame, threshold: float = 0.0) -> pd.Dat
     return pd.DataFrame(rows).set_index("date").sort_index()
 
 
+def _covariance_ridge_targets(
+    predictions: pd.DataFrame,
+    features: pd.DataFrame,
+    risk_aversion: float,
+    turnover_penalty: float,
+) -> pd.DataFrame:
+    """Map Ridge forecasts to long-only weights using trailing covariance."""
+    if predictions.empty:
+        return pd.DataFrame(columns=[*ASSETS])
+    returns = (
+        features.pivot(index="date", columns="asset", values="ret_1")
+        .reindex(columns=list(ASSETS))
+        .sort_index()
+    )
+    previous = np.zeros(len(ASSETS), dtype=float)
+    rows: list[dict[str, Any]] = []
+    for date, group in predictions.groupby("date"):
+        values = group.set_index("asset")["prediction"].reindex(ASSETS)
+        if values.isna().any():
+            continue
+        history = returns.loc[returns.index <= pd.Timestamp(date)].tail(60).dropna()
+        if len(history) < 20:
+            covariance = np.eye(len(ASSETS), dtype=float) * 1e-4
+        else:
+            covariance = history.cov().to_numpy(dtype=float)
+            covariance = np.nan_to_num(covariance, nan=0.0, posinf=0.0, neginf=0.0)
+            covariance += np.eye(len(ASSETS), dtype=float) * 1e-8
+        forecast = values.to_numpy(dtype=float)
+        best_weights = np.zeros(len(ASSETS), dtype=float)
+        best_value = -np.inf
+        for btc_ticks in range(11):
+            for eth_ticks in range(11 - btc_ticks):
+                weights = np.array([btc_ticks, eth_ticks], dtype=float) / 10.0
+                objective = (
+                    float(weights @ forecast)
+                    - float(risk_aversion) * float(weights @ covariance @ weights)
+                    - float(turnover_penalty) * float(np.abs(weights - previous).sum())
+                )
+                if objective > best_value:
+                    best_value = objective
+                    best_weights = weights
+        previous = best_weights
+        rows.append({"date": date, **dict(zip(ASSETS, best_weights))})
+    return pd.DataFrame(rows).set_index("date").sort_index()
+
+
+def _blend_predictions(
+    ridge: pd.DataFrame,
+    ar: pd.DataFrame,
+    ridge_weight: float,
+) -> pd.DataFrame:
+    if ridge.empty or ar.empty:
+        return pd.DataFrame(columns=["date", "asset", "prediction", "positive"])
+    left = ridge[["date", "asset", "prediction"]].rename(columns={"prediction": "ridge_prediction"})
+    right = ar[["date", "asset", "prediction"]].rename(columns={"prediction": "ar_prediction"})
+    merged = left.merge(right, on=["date", "asset"], how="inner")
+    merged["prediction"] = (
+        float(ridge_weight) * merged["ridge_prediction"]
+        + (1.0 - float(ridge_weight)) * merged["ar_prediction"]
+    )
+    merged["positive"] = merged["prediction"] > 0.0
+    return merged[["date", "asset", "prediction", "positive"]]
+
+
 def _apply_uncertainty_gate(predictions: pd.DataFrame, maximum: float) -> pd.DataFrame:
     if predictions.empty or maximum <= 0.0 or "uncertainty" not in predictions:
         return predictions
@@ -140,6 +204,63 @@ def build_targets(
         )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
         raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_covariance":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+        )
+        raw = _covariance_ridge_targets(
+            predictions,
+            features,
+            risk_aversion=float(params.get("risk_aversion", 1.0)),
+            turnover_penalty=float(params.get("turnover_penalty", 0.01)),
+        )
+    elif mode == "ridge_label_clip":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            label_clip=float(params.get("label_clip", 0.05)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_adaptive_refit":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_ar_blend":
+        ridge = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+        )
+        ar = walk_forward_ar(
+            features,
+            dates,
+            config,
+            horizon=int(params.get("horizon", 5)),
+        )
+        predictions = _blend_predictions(ridge, ar, float(params.get("ridge_weight", 0.5)))
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
     elif mode == "ar":
         predictions = walk_forward_ar(features, dates, config, horizon=int(params.get("horizon", 5)))
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
@@ -198,7 +319,7 @@ def build_targets(
         )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
         raw = _equal_positive(predictions, threshold=threshold)
-    elif mode == "timesfm":
+    elif mode == "timesfm_confidence":
         predictions = walk_forward_timesfm(
             features,
             dates,

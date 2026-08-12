@@ -371,6 +371,8 @@ def walk_forward_ridge(
     config: dict[str, Any],
     alpha: float,
     use_onchain: bool,
+    label_clip: float | None = None,
+    refit_sessions: int | None = None,
 ) -> pd.DataFrame:
     """Predict each asset using only labels ending before current signal date."""
     selected_features = [c for c in feature_columns if use_onchain or not c.startswith("onchain_")]
@@ -379,7 +381,7 @@ def walk_forward_ridge(
     train_end = pd.Timestamp(evaluation["train_end"]) if evaluation.get("train_end") else pd.Timestamp.max
     validation_end = pd.Timestamp(evaluation["validation_end"]) if evaluation.get("validation_end") else pd.Timestamp.max
     min_train_days = int(evaluation["min_train_days"])
-    refit_sessions = int(evaluation["refit_sessions"])
+    refit_sessions = int(refit_sessions or evaluation["refit_sessions"])
     embargo = int(evaluation.get("embargo_sessions", 1))
     rows: list[dict[str, Any]] = []
     for asset in config["data"]["assets"]:
@@ -407,6 +409,8 @@ def walk_forward_ridge(
                 if train["date"].nunique() >= min_train_days:
                     x = train[selected_features].to_numpy(dtype=float)
                     y = train["label"].to_numpy(dtype=float)
+                    if label_clip is not None:
+                        y = np.clip(y, -float(label_clip), float(label_clip))
                     model = _fit_ridge(x, y, alpha)
                     last_fit_index = signal_index
             if model is None:

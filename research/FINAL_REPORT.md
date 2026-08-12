@@ -122,11 +122,10 @@ Fair snapshot anchor `51b44ade-505c-44fc-8ca2-adb724bb9a63`
         └── Cost-aware threshold Ridge [promoted research candidate]
             ├── TimesFM 2.5 zero-shot [rejected]
             ├── Kronos base zero-shot [rejected]
-             ├── TimesFM-to-Ridge hybrid [rejected]
--            └── TimesFM uncertainty gate [rejected]
-+            ├── TimesFM uncertainty gate [rejected]
-+            ├── XGBoost cost-aware [rejected]
-+            └── LightGBM cost-aware [rejected]
+            ├── TimesFM-to-Ridge hybrid [rejected]
+            ├── TimesFM uncertainty gate [rejected]
+            ├── XGBoost cost-aware [rejected]
+            └── LightGBM cost-aware [rejected]
 ```
 
 Historical server planning and smoke nodes:
