@@ -253,3 +253,9 @@ Residual-gate fixed-setting sensitivity: multiplier `0.05` test `-0.3514`,
 `0.10` `-0.1933`, `0.15` `0.3202`, `0.20` `0.2751`, `0.30` `-0.2809`.
 Doubled fee/slippage at `0.15` retained test `0.2561`. Mid-range settings beat
 control, but parameter sensitivity blocks deployment.
+
+Static Kronos head fine-tuning used teacher-forced token loss on pre-validation
+OHLCV paths. Six of eight Optuna trials completed; two became timeout-stale.
+Best validation trial scored `-0.6672`; selected rerun scored frozen test
+`-0.7654`, maximum drawdown `-0.6107`, Sharpe `-0.4848`, and turnover `5.4815`.
+Rejected. Fine-tuning did not rescue zero-shot Kronos.

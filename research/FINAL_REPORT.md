@@ -138,7 +138,8 @@ Fair snapshot anchor `51b44ade-505c-44fc-8ca2-adb724bb9a63`
                     ├── LSTM sequence model [rejected]
                     ├── TCN sequence model [rejected]
                     ├── Transformer sequence model [rejected]
-                    └── Static TimesFM head fine-tune [rejected]
+                    ├── Static TimesFM head fine-tune [rejected]
+                    └── Static Kronos head fine-tune [rejected]
 ```
 
 Historical server planning and smoke nodes:
@@ -219,6 +220,7 @@ primary; validation score is selection-only.
 | TCN sequence model | local neural child | -0.0665626 | -0.7859552 | 4.9757 | hidden 16, lr 0.000459, epochs 5, threshold 0.00708 |
 | Transformer sequence model | local neural child | 0.0889865 | -0.4587975 | 4.2989 | hidden 64, lr 0.003289, epochs 4, threshold 0.00772 |
 | Static TimesFM head fine-tune | local foundation child | 0.0371503 | -0.5188694 | 2.1190 | context 256, lr 0.00000138, steps 2, threshold 0.02048 |
+| Static Kronos head fine-tune | local foundation child | -0.7021821 | -0.7653942 | 5.4815 | context 256, lr 0.000851, steps 1, threshold 0.01438; 6/8 trials complete |
 
 Cost-aware threshold Ridge beats fair control score `-0.2189362`, ETH
 buy-and-hold `-0.0746825`, and all prior fair siblings. Test mean rolling return
@@ -281,6 +283,11 @@ turnover. TCN scored `-0.7860`; Transformer scored `-0.4588`. Static TimesFM
 point-head fine-tuning scored `-0.5189` after eight Optuna trials. Dynamic
 TimesFM fine-tuning exceeded 15 minutes after two completed trials and one
 running trial; no result used for promotion.
+
+Static Kronos head fine-tuning completed six of eight Optuna trials before two
+trials became timeout-stale. Best validation trial scored `-0.6672`; final
+selected rerun scored validation `-0.7022` and frozen test `-0.7654`, with
+maximum drawdown `-0.6107`, Sharpe `-0.4848`, and turnover `5.4815`. Reject.
 
 Residual-gate sensitivity was predeclared after promotion: multiplier `0.05`
 scored `-0.3514`, `0.10` scored `-0.1933`, `0.15` scored `0.3202`, `0.20`

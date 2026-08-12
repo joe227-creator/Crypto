@@ -95,6 +95,12 @@ was severe, but mid-range `0.15` and `0.20` settings scored `0.3202` and
 `0.2751`; doubled fee/slippage at `0.15` scored `0.2561`. These results support
 continued research only, not deployment.
 
+Static Kronos dual-head fine-tuning used teacher-forced token loss on
+pre-validation OHLCV paths. Six of eight Optuna trials completed before two
+timeouts. Selected rerun scored frozen test `-0.7654`, maximum drawdown
+`-0.6107`, Sharpe `-0.4848`, and turnover `5.4815`; fine-tuning did not rescue
+zero-shot Kronos. Reject without changing accepted contract.
+
 ## Evidence Gaps
 
 Promoted candidate has one positive and three zero-return frozen-test windows.

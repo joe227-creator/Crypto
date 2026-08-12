@@ -170,9 +170,10 @@ historical parent; residual-gate Ridge is current research parent.
 
 ## Optuna Audit And Robustness Bush
 
-Ledger now contains 32 experiment rows, 28 rows with declared Optuna studies,
-and every declared study records eight trials. Current and new local SQLite
-artifacts independently contain eight completed trials; historical branch
+Ledger now contains 40 experiment rows, 36 rows with declared Optuna studies.
+Thirty-five declared studies contain eight completed trials; Kronos fine-tune
+contains six completed of eight before two timeout-stale trials. Current and new local SQLite
+artifacts independently contain completed trials; historical branch
 databases were overwritten or not retained, so ledger rows remain the only
 record for those past trial executions. `_run_optuna` now caps resumed studies
 at configured `n_trials` instead of appending another eight trials on rerun.
@@ -219,3 +220,9 @@ scores `-0.3514` at multiplier `0.05`, `-0.1933` at `0.10`, `0.3202` at `0.15`,
 `0.2751` at `0.20`, and `-0.2809` at `0.30`. Doubling fee and slippage at
 multiplier `0.15` retained test score `0.2561`. Mid-range gate settings beat
 control; sharp edges remain explicit robustness gap. No deployment.
+
+Static Kronos dual-head fine-tuning then ran with teacher-forced token loss on
+pre-validation OHLCV paths. Six of eight Optuna trials completed; two became
+timeout-stale. Best validation trial scored `-0.6672`; selected rerun scored
+validation `-0.7022`, frozen test `-0.7654`, maximum drawdown `-0.6107`, Sharpe
+`-0.4848`, and turnover `5.4815`. Fine-tuning did not rescue Kronos. Reject.
