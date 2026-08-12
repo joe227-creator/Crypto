@@ -214,3 +214,22 @@ trials and the unchanged frozen-test contract.
 Adaptive-refit Ridge beats prior threshold Ridge score `0.2132863` and lowers
 drawdown/turnover, but validation score is lower and frozen test still has one
 positive window out of four. No deployment or paper trading.
+
+## Residual Uncertainty Bush
+
+Fresh literature included arXiv:2508.15922 on residual-based probabilistic
+volatility forecasts and arXiv:2601.10591 on uncertainty decomposition. New
+branches used eight validation-only Optuna trials under unchanged contract.
+
+- Residual uncertainty Ridge gate: validation `0.0761147`, frozen test
+  `0.3901627`, maximum drawdown `-0.0294`, Sharpe `0.9421`, turnover `1.0662`;
+  promoted as current research parent only. Parameters: alpha `0.1527`, refit
+  `81`, residual multiplier `0.1445`, threshold `0.01335`.
+- Residual signal-to-noise sizing: identical validation and frozen-test metrics
+  and identical targets; rejected as no incremental direction.
+- Conformal residual calibration gate: validation `-0.1200`, frozen test
+  `-0.2809`; rejected.
+
+Residual gate validation search was fragile: seven trials scored `-0.1200`, one
+scored `0.0761`. Fixed no-uncertainty ablation collapsed to frozen test
+`-0.4634`. One of four test windows was positive. No deployment or paper trading.

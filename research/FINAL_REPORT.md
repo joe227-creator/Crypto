@@ -4,8 +4,8 @@
 **Repository:** `https://github.com/joe227-creator/Crypto`  
 **OpenResearch server project:** `019fec29-be2c-7d20-b098-70b35fefda7d`
 **OpenResearch local project:** `528668ac-3d0c-414f-ab6f-5316030509e9`
-**Status:** balanced temporal contract completed; adaptive-refit Ridge promoted
-as research candidate; no deployment
+**Status:** balanced temporal contract completed; residual-uncertainty Ridge gate
+promoted as research candidate; no deployment
 
 ## Objective
 
@@ -131,7 +131,10 @@ Fair snapshot anchor `51b44ade-505c-44fc-8ca2-adb724bb9a63`
             ├── Ridge/AR forecast blend [rejected]
             ├── Ridge label clipping [rejected]
             └── Adaptive-refit Ridge [promoted research candidate]
-                └── Adaptive-refit covariance allocator [rejected]
+                ├── Adaptive-refit covariance allocator [rejected]
+                ├── Residual uncertainty Ridge gate [promoted research candidate]
+                ├── Residual signal-to-noise sizing [rejected]
+                └── Conformal residual calibration gate [rejected]
 ```
 
 Historical server planning and smoke nodes:
@@ -205,6 +208,9 @@ primary; validation score is selection-only.
 | Ridge label clipping | local robustness child | -0.0938810 | -0.2307729 | 1.3770 | alpha 0.0620, label clip 0.1444, threshold 0.01675 |
 | Adaptive-refit Ridge | local robustness child | 0.0761147 | 0.2751355 | 0.9990 | alpha 0.02268, refit 46, threshold 0.02963 |
 | Adaptive-refit covariance allocator | local adaptive child | 0.1313989 | -0.0569918 | 0.2622 | refit 40, risk 48.8318, turnover penalty 0.00889 |
+| Residual uncertainty Ridge gate | local residual child | 0.0761147 | 0.3901627 | 1.0662 | alpha 0.1527, refit 81, residual multiplier 0.1445, threshold 0.01335 |
+| Residual signal-to-noise sizing | local residual child | 0.0761147 | 0.3901627 | 1.0662 | same selected parameters; identical targets |
+| Conformal residual calibration gate | local residual child | -0.1200000 | -0.2809118 | 0.9990 | refit 40, quantile 0.9786, multiplier 0.1778, threshold 0.01438 |
 
 Cost-aware threshold Ridge beats fair control score `-0.2189362`, ETH
 buy-and-hold `-0.0746825`, and all prior fair siblings. Test mean rolling return
@@ -251,6 +257,15 @@ metrics. Promote adaptive-refit Ridge as the new research parent only; its
 validation score `0.0761147` is below the prior parent and its four test
 windows still contain one positive and three zero-return windows. The
 adaptive-refit covariance child failed with frozen test `-0.0569918`.
+
+Residual uncertainty gate then became strongest research candidate. It scored
+`0.3901627` frozen test with maximum drawdown `-0.0294`, Sharpe `0.9421`, and
+turnover `1.0662`. Removing uncertainty penalty at same selected model settings
+collapsed to frozen test `-0.4634`, proving signal dependence on gate. Validation
+selection was fragile: seven of eight trials scored `-0.1200`, one scored
+`0.0761`; only one of four test windows was positive. Promote for research
+robustness checks only. Residual sizing produced identical targets, while a
+calibrated 80/20 conformal residual gate failed at `-0.2809`.
 
 ## Historical / Pre-Balanced Stage 2 Screening
 
@@ -312,11 +327,11 @@ CPU backend. Balanced anchor, ten fair model siblings, and local follow-up
  directions answered. Adaptive-refit Ridge is promoted as research parent;
  robustness gaps still block deployment.
 
-Recommendation: **promote adaptive-refit Ridge for further research, paper-trade
-nothing**. Do not deploy adaptive-refit Ridge, threshold Ridge, or any fair
-ARIMA, ETS, cross-asset, covariance, or allocation variant. Next valid bush
-requires independent stochastic seeds, regime windows, threshold sensitivity,
-and formal multiple-testing adjustment.
+Recommendation: **promote residual-uncertainty Ridge gate for further research,
+paper-trade nothing**. Do not deploy residual-gate Ridge, adaptive-refit Ridge,
+threshold Ridge, or any fair ARIMA, ETS, cross-asset, covariance, or allocation
+variant. Next valid bush requires independent stochastic seeds, regime windows,
+threshold sensitivity, and formal multiple-testing adjustment.
 
 ## Exact Next Commands
 
@@ -324,7 +339,7 @@ and formal multiple-testing adjustment.
 # Local project and answered root:
 orx projects
 orx runs 528668ac-3d0c-414f-ab6f-5316030509e9
-# Continue only with promoted adaptive-refit Ridge robustness checks or a new
+# Continue only with promoted residual-gate Ridge robustness checks or a new
 # literature-backed question. Never edit answered branches.
 ```
 

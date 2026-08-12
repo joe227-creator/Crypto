@@ -159,14 +159,14 @@ not archived fair-run anchor artifacts.
 
 TimesFM and Kronos foundation bush is answered and rejected. Deeper architectures
 remain unstarted. Any new bush requires fresh literature evidence, independent
-stochastic evaluation, and completion of promoted adaptive-refit Ridge robustness
+stochastic evaluation, and completion of promoted residual-gate Ridge robustness
 checks.
 Server compute remains credit-blocked.
 
 XGBoost and LightGBM were then tested as cost-aware tree-model children under
 promoted threshold Ridge. XGBoost scored frozen test `-0.4176403`; LightGBM
-scored `-0.4602400`. Both were rejected. Promoted linear Ridge with cost-aware
-threshold remains the single research parent.
+scored `-0.4602400`. Both were rejected. Promoted threshold Ridge remains
+historical parent; residual-gate Ridge is current research parent.
 
 ## Optuna Audit And Robustness Bush
 
@@ -197,3 +197,13 @@ append were tested with validation-only Optuna and frozen-test scoring:
 
 Adaptive-refit parameters at refit sessions 40 and 46 tied on validation and
 produced identical frozen-test metrics. No deployment or paper trading.
+
+Residual uncertainty round used arXiv:2508.15922 and arXiv:2601.10591 for
+probabilistic residual and uncertainty controls. Residual-scale gating scored
+validation `0.0761147` and frozen test `0.3901627`, with maximum drawdown
+`-0.0294`, Sharpe `0.9421`, and turnover `1.0662`. It is promoted as current
+research parent only. Seven of eight validation trials scored `-0.1200`; one
+trial scored `0.0761`, and one of four test windows was positive. Removing
+uncertainty penalty at identical model settings scored `-0.4634` on frozen test.
+Residual signal-to-noise sizing produced identical targets. An 80/20 conformal
+calibration gate scored frozen test `-0.2809`; both children were rejected.

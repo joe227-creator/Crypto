@@ -76,6 +76,16 @@ score was lower (`0.0761147` versus `0.1135487`), one of four frozen windows was
 positive, and the adaptive covariance append failed at `-0.0569918`; these gaps
 block deployment.
 
+A residual-uncertainty gate was then added to adaptive Ridge. It uses only
+expanding-fit residual scale available before each signal date. It scored frozen
+test `0.3901627`, maximum drawdown `-0.0294`, Sharpe `0.9421`, and turnover
+`1.0662`; it is the current research parent only. Seven of eight validation
+trials scored `-0.1200`, one scored `0.0761`, and one of four test windows was
+positive. Removing uncertainty penalty scored `-0.4634`. Signal-to-noise sizing
+was identical; an 80/20 conformal calibration gate scored `-0.2809`. These
+results preserve contract but leave strong selection and regime-concentration
+gaps. No deployment.
+
 ## Evidence Gaps
 
 Promoted candidate has one positive and three zero-return frozen-test windows.
