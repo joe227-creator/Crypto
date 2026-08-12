@@ -41,8 +41,8 @@ Historical local project root answered successfully, so its branch is frozen.
 Four historical direct children were run sequentially in two literature-backed
 bushes. A balanced-contract anchor and ten fair siblings were then answered
 under one pinned snapshot. All produced valid EVAL output; ETS narrowly beat
-fair control numerically, but failed robust promotion criteria. No promotion
-exists.
+fair control numerically, but failed robust promotion criteria at that stage.
+Cost-aware threshold Ridge was promoted later as research parent.
 
 ## First literature bush
 
@@ -116,10 +116,23 @@ above control, but had negative test rolling return, lost to ETH buy-and-hold
 test score `-0.0746825`, and was not robust enough to promote. All other fair
 directions scored below control.
 
-No promotion exists. Do not create stacked children from this bush. Seed score
-spread is zero because current implementations are deterministic; repeated seed
-rows are not independent stochastic evidence. Regime slices and formal
-Deflated Sharpe or equivalent multiple-testing adjustment remain pending.
+Cost-aware threshold Ridge was then tested from the control parent using the
+transaction-cost filter described by arXiv:2606.00060. Optuna searched alpha
+and threshold on validation only. Local result: validation `0.1135487`, frozen
+test `0.2132863`, mean test rolling return `0.0375513`, maximum drawdown
+`-0.0364`, Sharpe `0.7491`, turnover `1.4794`, and turnover penalty `0.0480`.
+This direction is promoted as research parent, not deployment model.
+
+Follow-up local ablations did not improve it: clipping `0.1946880`, partial
+adjustment `0.1323719`, pooled Ridge `0.1021681`, cash overlay `0.1197785`,
+hysteresis `0.1946880`, volatility gates `-0.4211` or lower, and AR threshold
+`-0.8077` on frozen test. These remain rejected siblings.
+
+Promoted threshold result has one positive and three zero-return test windows;
+seed score spread is zero because implementation is deterministic. Repeated seed
+rows are not independent stochastic evidence. Regime slices, threshold
+sensitivity, and formal Deflated Sharpe or equivalent multiple-testing adjustment
+remain pending. No paper trading or production deployment.
 
 Fair-run artifacts are preserved outside the checkout at
 `/home/user/.local/share/openresearch/local-runs/<run-id>/repo/.openresearch/artifacts`.
@@ -128,7 +141,7 @@ are local smoke output. Their commit field identifies HEAD at generation time.
 Deterministic control metrics may match the fair control, but these files are
 not archived fair-run anchor artifacts.
 
-Open directions remain TimesFM zero-shot and Kronos zero-shot. They are blocked
-by missing PyTorch/runtime dependencies/checkpoints; server compute also remains
-credit-blocked. No further bush should be created without a new evidence-backed
-hypothesis and a confirmed parent winner.
+TimesFM and Kronos are now locally available in the runtime report, but remain
+unrun. New bush requires fresh literature evidence, independent stochastic
+evaluation, and completion of promoted threshold robustness checks. Server
+compute remains credit-blocked.

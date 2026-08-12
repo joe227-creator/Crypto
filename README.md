@@ -62,8 +62,10 @@ so no close or on-chain observation from the future can enter a position.
   `2023-01-01..2024-12-31`, frozen test `2025-01-01..2026-08-10`.
 - Pinned snapshot hashes and contract rationale: `research/DECISIONS.md` and
   `research/ADR-001-balanced-temporal-contract.md`.
-- Fair control test score: `-0.2189362`; no model candidate met promotion
-  criteria. Retain controls; paper-trade nothing.
+- Fair control test score: `-0.2189362`. Cost-aware threshold Ridge is
+  promoted as research candidate: test `0.2132863`, validation `0.1135487`.
+  Research promotion is not deployment approval; retain controls and
+  paper-trade nothing.
 - Full experiment tree, run IDs, metrics, risks, and stop decision:
   `research/FINAL_REPORT.md`.
 - Chronological run ledger: `research/experiment_ledger.csv`.

@@ -4,8 +4,8 @@
 **Repository:** `https://github.com/joe227-creator/Crypto`  
 **OpenResearch server project:** `019fec29-be2c-7d20-b098-70b35fefda7d`
 **OpenResearch local project:** `528668ac-3d0c-414f-ab6f-5316030509e9`
-**Status:** balanced temporal contract and fair comparison bush completed locally;
-no model is promoted
+**Status:** balanced temporal contract completed; cost-aware threshold Ridge
+promoted as research candidate; no deployment
 
 ## Objective
 
@@ -118,7 +118,8 @@ Fair snapshot anchor `51b44ade-505c-44fc-8ca2-adb724bb9a63`
         ├── EMA Ridge
         ├── Top-1 Ridge
         ├── Hysteresis Ridge
-        └── Volatility-gated Ridge
+        ├── Volatility-gated Ridge
+        └── Cost-aware threshold Ridge [promoted research candidate]
 ```
 
 Historical server planning and smoke nodes:
@@ -180,11 +181,21 @@ primary; validation score is selection-only.
 | Top-1 Ridge | `505056ac-5b31-4ed2-8c38-29add2e4cf99` | -0.4045567 | -0.7593821 | 4.3029 | alpha 89.1666 |
 | Hysteresis Ridge | `f14e7395-4126-4a0f-9ecb-35f87ff101a4` | 0.0617274 | -0.3176550 | 2.1506 | alpha 0.8263, band 0.00988 |
 | Volatility-gated Ridge | `140323a1-1d02-4081-9bf9-00a3537fb07b` | -0.6569587 | -0.7909709 | 4.7239 | alpha 80.6384, threshold 0.7222 |
+| Cost-aware threshold Ridge | local `ba9dab5` / branch `dc031c4` | 0.1135487 | 0.2132863 | 1.4794 | alpha 0.1527, threshold 0.02682 |
 
-No candidate beats fair control robustly. ETS narrowly exceeds control
-numerically, but has negative test rolling return and loses to ETH buy-and-hold
-test score `-0.0746825`. All other directions remain below control. No child is
-promoted or suitable for deployment.
+Cost-aware threshold Ridge beats fair control score `-0.2189362`, ETH
+buy-and-hold `-0.0746825`, and all prior fair siblings. Test mean rolling return
+is `0.0375513`, maximum drawdown `-0.0364`, Sharpe `0.7491`, turnover `1.4794`,
+and turnover penalty `0.0480`. Promote as research parent only. Four test
+windows contain one positive window and three zero-return windows; seed spread is
+zero because implementation is deterministic. Threshold sensitivity is material
+and formal multiple-testing adjustment remains missing. No deployment.
+
+Follow-up directions were screened locally under same contract: prediction
+clipping test `0.1946880`, partial adjustment `0.1323719`, pooled Ridge
+`0.1021681`, cash overlay `0.1197785`, hysteresis `0.1946880`, volatility gates
+`-0.4211` or lower, and AR threshold `-0.8077`. None beats promoted threshold
+Ridge on frozen test with stronger robustness evidence.
 
 ## Historical / Pre-Balanced Stage 2 Screening
 
@@ -211,6 +222,8 @@ parent; both lost, so no deeper stacked-bush node was created.
   was zero because current forecasters are deterministic, so repeated seed rows
   are not independent stochastic evidence.
 - Fair validation and test slices report 5 and 4 complete 126-session windows.
+- Promoted threshold Ridge has only one positive frozen-test window out of four;
+  sparse-window concentration blocks production promotion.
 - Regime slices, parameter sensitivity beyond selected Optuna values, feature
   importance stability, and formal Deflated Sharpe or equivalent multiple-testing
   adjustment remain unmeasured. These are explicit promotion gaps, not positive
@@ -225,25 +238,24 @@ parent; both lost, so no deeper stacked-bush node was created.
 ## Foundation Models
 
 TimesFM and Kronos research was reviewed through `orx lit`, `orx paper`, and
-official repositories. TimesFM public package/checkpoint path and PyTorch are
-not installed in current CPU environment. Kronos official repository and public
-model zoo are documented, but PyTorch is also unavailable. The harness reports
-`blocked_dependency` and fails loudly for `timesfm`/`kronos`; it never silently
-replaces a foundation model with another model. Stage 3 remains open, not
-rejected.
+official repositories. Current local smoke availability reports both packages
+and PyTorch available, but no foundation-model run has been answered. The
+harness never silently replaces a foundation model with another model. Stage 3
+remains open, not rejected.
 
 ## Blocker And Recommendation
 
 Managed CPU launch on server project still returns HTTP 402 `billing_required` /
 `Out of credits` before provisioning. Local `orx up` project provides a working
-CPU backend. Balanced anchor and ten fair model siblings answered. ETS narrowly
-exceeded control numerically, but no model met robust promotion criteria.
+CPU backend. Balanced anchor, ten fair model siblings, and local follow-up
+directions answered. Cost-aware threshold Ridge is promoted as research parent;
+robustness gaps still block deployment.
 
-Recommendation: **keep 50/50 control as research reference and paper-trade
-nothing**. Do not deploy any fair Ridge, ARIMA, ETS, cross-asset, or allocation
-variant. Foundation-model work remains open only after PyTorch, TimesFM/Kronos
-dependencies, and checkpoints are available; any new bush needs fresh literature
-evidence and a confirmed parent winner.
+Recommendation: **promote cost-aware threshold Ridge for further research,
+paper-trade nothing**. Do not deploy threshold Ridge or any fair ARIMA, ETS,
+cross-asset, or allocation variant. Next valid bush requires independent
+stochastic seeds, regime windows, threshold sensitivity, and formal
+multiple-testing adjustment.
 
 ## Exact Next Commands
 
@@ -251,8 +263,8 @@ evidence and a confirmed parent winner.
 # Local project and answered root:
 orx projects
 orx runs 528668ac-3d0c-414f-ab6f-5316030509e9
-# Stop here unless foundation dependencies and a new literature-backed question
-# are available. Never edit answered branches.
+# Continue only with promoted threshold-Ridge robustness checks or a new
+# literature-backed question. Never edit answered branches.
 ```
 
 Re-read all terminal runs after each wait tick. Analyze `EVAL.md` before

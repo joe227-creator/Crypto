@@ -47,16 +47,21 @@ execution, split boundaries, or snapshot. Validation may select parameters, but
 the frozen test cannot influence tuning or promotion. Historical pre-balanced
 answers remain explicitly non-comparable evidence.
 
-The balanced control and ten fair siblings were answered locally. ETS was
-closest at frozen-test score `-0.1819630` versus control `-0.2189362`, but had
-negative test rolling return, lost to ETH buy-and-hold test score `-0.0746825`,
-and did not meet robust promotion criteria. No parent is promoted and no
-stacked child is valid.
+The balanced control and ten fair siblings were answered locally. A later
+cost-aware threshold Ridge child, motivated by arXiv:2606.00060, scored
+`0.2132863` on frozen test versus control `-0.2189362`, with mean test rolling
+return `0.0375513`, maximum drawdown `-0.0364`, Sharpe `0.7491`, and turnover
+`1.4794`. It is promoted as research parent, not deployment model.
+
+Clipping, partial adjustment, pooled Ridge, cash overlay, hysteresis,
+volatility-gate, and AR-threshold follow-ups did not improve promoted candidate.
 
 ## Evidence Gaps
 
+Promoted candidate has one positive and three zero-return frozen-test windows.
 Repeated seed rows have zero spread because current implementations are
 deterministic; they are not independent stochastic evidence. Regime slices,
 parameter sensitivity, feature stability, and formal Deflated Sharpe or
 equivalent multiple-testing adjustment remain unmeasured. These gaps block
-promotion but do not justify changing the accepted contract retrospectively.
+deployment and require next research round, but do not justify changing the
+accepted contract retrospectively.
