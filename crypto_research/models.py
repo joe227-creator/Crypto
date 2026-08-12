@@ -38,6 +38,154 @@ def _load_timesfm() -> Any:
     return _TIMESFM_MODEL
 
 
+def _load_timesfm_trainable() -> Any:
+    from timesfm.timesfm_2p5 import timesfm_2p5_torch as _tft
+
+    model_dir = Path(__file__).resolve().parents[1] / "models" / "timesfm-2.5-200m-pytorch"
+    return _tft.TimesFM_2p5_200M_torch.from_pretrained(
+        model_dir,
+        local_files_only=True,
+        torch_compile=False,
+    )
+
+
+def _timesfm_point_forecast(model: Any, contexts: Any) -> Any:
+    import torch
+    from timesfm.torch import util
+    from timesfm.timesfm_2p5.timesfm_2p5_torch import revin
+
+    patched = contexts.reshape(contexts.shape[0], -1, model.model.p)
+    masks = torch.zeros_like(patched, dtype=torch.bool)
+    n = torch.zeros(contexts.shape[0], device=contexts.device)
+    mu = torch.zeros_like(n)
+    sigma = torch.zeros_like(n)
+    patch_mu: list[Any] = []
+    patch_sigma: list[Any] = []
+    for index in range(patched.shape[1]):
+        (n, mu, sigma), _ = util.update_running_stats(n, mu, sigma, patched[:, index], masks[:, index])
+        patch_mu.append(mu)
+        patch_sigma.append(sigma)
+    context_mu = torch.stack(patch_mu, dim=1)
+    context_sigma = torch.stack(patch_sigma, dim=1)
+    normalized = revin(patched, context_mu, context_sigma, reverse=False)
+    (__, __, output, __), __ = model.model(normalized, masks)
+    output = revin(output, context_mu, context_sigma, reverse=True)
+    output = output.reshape(contexts.shape[0], -1, model.model.o, model.model.q)
+    return output[:, -1, :5, model.model.aridx]
+
+
+def _fine_tune_timesfm_head(
+    model: Any,
+    contexts: Any,
+    targets: Any,
+    learning_rate: float,
+    steps: int,
+) -> None:
+    import torch
+
+    for parameter in model.model.parameters():
+        parameter.requires_grad_(False)
+    for parameter in model.model.output_projection_point.parameters():
+        parameter.requires_grad_(True)
+    optimizer = torch.optim.AdamW(
+        model.model.output_projection_point.parameters(),
+        lr=float(learning_rate),
+        weight_decay=0.0001,
+    )
+    loss_fn = torch.nn.SmoothL1Loss()
+    model.model.train()
+    for _ in range(int(steps)):
+        optimizer.zero_grad(set_to_none=True)
+        prediction = _timesfm_point_forecast(model, contexts)
+        loss = loss_fn(prediction, targets)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.model.output_projection_point.parameters(), 1.0)
+        optimizer.step()
+    model.model.eval()
+
+
+def walk_forward_timesfm_finetune(
+    features: pd.DataFrame,
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    context: int = 512,
+    learning_rate: float = 1e-5,
+    steps: int = 1,
+    refit_sessions: int = 21,
+    horizon: int = 5,
+) -> pd.DataFrame:
+    """Causal TimesFM point-head fine-tuning on historical price paths."""
+    import torch
+
+    rows: list[dict[str, Any]] = []
+    for asset in config["data"]["assets"]:
+        model = _load_timesfm_trainable()
+        asset_rows = features[features["asset"].eq(asset)].sort_values("date").copy()
+        asset_rows["date"] = pd.to_datetime(asset_rows["date"])
+        dates = asset_rows["date"].to_numpy(dtype="datetime64[ns]")
+        label_end_dates = asset_rows["label_end_date"].to_numpy(dtype="datetime64[ns]")
+        log_close = np.log(asset_rows["close"].to_numpy(dtype=float))
+        position = {date: index for index, date in enumerate(dates)}
+        last_fit_index = -int(refit_sessions)
+        for signal_index, signal_date in enumerate(signal_dates):
+            position_now = position.get(np.datetime64(signal_date).astype("datetime64[ns]"))
+            if position_now is None:
+                continue
+            if signal_index - last_fit_index >= int(refit_sessions):
+                cutoff_position = position_now - int(config["evaluation"].get("embargo_sessions", 1))
+                if cutoff_position > 0:
+                    label_cutoff = dates[cutoff_position]
+                    train_end = pd.Timestamp(config["evaluation"].get("train_end", signal_date))
+                    if pd.Timestamp(signal_date) > pd.Timestamp(config["evaluation"].get("validation_end", signal_date)):
+                        train_end = pd.Timestamp(signal_date)
+                    sample_positions = [
+                        index
+                        for index in range(int(context) - 1, position_now)
+                        if pd.Timestamp(dates[index]) >= pd.Timestamp(config["evaluation"]["train_start"])
+                        and pd.Timestamp(dates[index]) <= train_end
+                        and label_end_dates[index] < label_cutoff
+                    ][-128:]
+                    if len(sample_positions) >= 16:
+                        context_values = np.stack(
+                            [log_close[index - int(context) + 1 : index + 1] for index in sample_positions]
+                        ).astype(np.float32)
+                        target_values = np.stack(
+                            [log_close[index + 1 : index + 1 + int(horizon)] for index in sample_positions]
+                        ).astype(np.float32)
+                        device = model.model.device
+                        context_tensor = torch.as_tensor(context_values, device=device)
+                        target_tensor = torch.as_tensor(target_values, device=device)
+                        _fine_tune_timesfm_head(
+                            model,
+                            context_tensor,
+                            target_tensor,
+                            learning_rate,
+                            steps,
+                        )
+                        last_fit_index = signal_index
+            start = max(0, position_now - int(context) + 1)
+            current = log_close[start : position_now + 1]
+            if len(current) < int(context):
+                continue
+            device = model.model.device
+            context_tensor = torch.as_tensor(current[None, :].astype(np.float32), device=device)
+            with torch.no_grad():
+                forecast = _timesfm_point_forecast(model, context_tensor)[0]
+            prediction = float(forecast[int(horizon) - 1] - log_close[position_now])
+            rows.append(
+                {
+                    "date": pd.Timestamp(dates[position_now]),
+                    "asset": asset,
+                    "prediction": prediction,
+                    "positive": prediction > 0.0,
+                }
+            )
+        del model
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    return pd.DataFrame(rows)
+
+
 def _load_kronos() -> Any:
     global _KRONOS_PREDICTOR
     if _KRONOS_PREDICTOR is None:

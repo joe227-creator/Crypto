@@ -13,6 +13,7 @@ from .models import (
     walk_forward_lightgbm,
     walk_forward_lstm,
     walk_forward_ridge,
+    walk_forward_timesfm_finetune,
     walk_forward_timesfm,
     walk_forward_timesfm_ridge,
     walk_forward_tcn,
@@ -414,6 +415,19 @@ def build_targets(
             dates,
             config,
             context=int(params.get("context", 256)),
+            horizon=int(params.get("horizon", 5)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "timesfm_finetune":
+        predictions = walk_forward_timesfm_finetune(
+            features,
+            dates,
+            config,
+            context=int(params.get("context", 512)),
+            learning_rate=float(params.get("learning_rate", 1e-5)),
+            steps=int(params.get("steps", 1)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
             horizon=int(params.get("horizon", 5)),
         )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
