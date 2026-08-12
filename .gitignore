@@ -10,3 +10,6 @@ data/processed/*.json
 data/processed/*.parquet
 research/studies/
 *.egg-info/
+external/
+models/*
+!models/README.md

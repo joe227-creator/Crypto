@@ -69,6 +69,8 @@ so no close or on-chain observation from the future can enter a position.
 - Full experiment tree, run IDs, metrics, risks, and stop decision:
   `research/FINAL_REPORT.md`.
 - Chronological run ledger: `research/experiment_ledger.csv`.
+- Local Stage 3 assets: `models/README.md`; adapters load repository-local
+  TimesFM 2.5 and Kronos base/tokenizer files, isolated from shared caches.
 
 ## Research ladder
 
@@ -80,10 +82,9 @@ so no close or on-chain observation from the future can enter a position.
    tuning is validation-only; branch-specific parameters never enter frozen
    test selection.
 3. Stage 2: causal autoregressive return forecast.
-4. Stage 3: optional TimesFM and Kronos adapters. They remain disabled unless
-   their public dependencies and checkpoints are available; unavailable
-   foundation models are reported as blocked, never silently replaced by a
-   different model.
+4. Stage 3: TimesFM 2.5 and Kronos zero-shot adapters. Local weights and source
+   repositories are present; experiments remain sequential and never silently
+   replace a foundation model with a different model.
 
 OpenResearch uses the fixed `bash measure.sh` command for the baseline and all
 children. Hyperparameters live in committed branch config files, not in the

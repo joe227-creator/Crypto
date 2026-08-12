@@ -144,12 +144,29 @@ def _run_optuna(
     )
 
     def objective(trial: Any) -> float:
-        params = {
-            "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
-            "threshold": trial.suggest_float("threshold", 0.0, 0.03),
-            "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
-        }
-        metrics, equity, trades, _ = _score_one("ridge", market, features, feature_columns, config, baseline_turnover, params)
+        mode = str(config.get("strategy", {}).get("mode", "ridge"))
+        if mode == "timesfm":
+            params = {
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "context": int(config.get("strategy", {}).get("params", {}).get("context", 256)),
+            }
+        elif mode == "kronos":
+            params = {
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "context": int(config.get("strategy", {}).get("params", {}).get("context", 256)),
+            }
+        elif mode == "ar":
+            params = {
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "horizon": trial.suggest_int("horizon", 1, 21),
+            }
+        else:
+            params = {
+                "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
+            }
+        metrics, equity, trades, _ = _score_one(mode, market, features, feature_columns, config, baseline_turnover, params)
         validation = metrics["validation"]
         value = float(validation.get("research_score", -1e9))
         if not np.isfinite(value):
@@ -290,7 +307,7 @@ def main() -> int:
     _write_json(artifact_dir / "foundation_availability.json", availability)
 
     optuna_result: dict[str, Any] | None = None
-    if bool(config.get("optuna", {}).get("enabled", False)) and mode == "ridge":
+    if bool(config.get("optuna", {}).get("enabled", False)) and mode in {"ridge", "ar", "timesfm", "kronos"}:
         optuna_result = _run_optuna(market, features, feature_columns, config, baseline_turnover, artifact_dir)
         params = {**params, **optuna_result["best_params"]}
     if mode == "stage0":

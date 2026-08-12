@@ -29,9 +29,9 @@
     "seeds": [11, 22, 33, 44, 55]
   },
   "strategy": {
-    "mode": "ridge",
+    "mode": "kronos",
     "params": {
-      "use_onchain": false,
+      "context": 256,
       "threshold": 0.0
     }
   },

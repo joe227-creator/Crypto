@@ -2,10 +2,158 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
+
+
+_TIMESFM_MODEL: Any = None
+_TIMESFM_CACHE: dict[tuple[int, int], pd.DataFrame] = {}
+_KRONOS_PREDICTOR: Any = None
+_KRONOS_CACHE: dict[tuple[int, int], pd.DataFrame] = {}
+
+
+def _load_timesfm() -> Any:
+    global _TIMESFM_MODEL
+    if _TIMESFM_MODEL is None:
+        from timesfm import configs as _tfc
+        from timesfm.timesfm_2p5 import timesfm_2p5_torch as _tft
+
+        model_dir = Path(__file__).resolve().parents[1] / "models" / "timesfm-2.5-200m-pytorch"
+        model = _tft.TimesFM_2p5_200M_torch.from_pretrained(
+            model_dir, local_files_only=True
+        )
+        model.compile(
+            _tfc.ForecastConfig(
+                max_context=512,
+                max_horizon=32,
+                per_core_batch_size=16,
+                normalize_inputs=True,
+                infer_is_positive=False,
+            )
+        )
+        _TIMESFM_MODEL = model
+    return _TIMESFM_MODEL
+
+
+def _load_kronos() -> Any:
+    global _KRONOS_PREDICTOR
+    if _KRONOS_PREDICTOR is None:
+        import sys as _sys
+        from pathlib import Path as _Path
+
+        root = _Path(__file__).resolve().parents[1] / "external" / "kronos"
+        if (root / "model" / "kronos.py").exists() and str(root) not in _sys.path:
+            _sys.path.insert(0, str(root))
+        from model import Kronos, KronosPredictor, KronosTokenizer
+
+        model_root = Path(__file__).resolve().parents[1] / "models"
+        tokenizer = KronosTokenizer.from_pretrained(
+            model_root / "kronos-tokenizer-base", local_files_only=True
+        )
+        kronos_model = Kronos.from_pretrained(
+            model_root / "kronos-base", local_files_only=True
+        )
+        _KRONOS_PREDICTOR = KronosPredictor(model=kronos_model, tokenizer=tokenizer, max_context=512)
+    return _KRONOS_PREDICTOR
+
+
+def walk_forward_kronos(
+    features: pd.DataFrame,
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    context: int = 256,
+    horizon: int = 5,
+) -> pd.DataFrame:
+    """Zero-shot Kronos OHLCV forecasts mapped to 5-session log returns.
+
+    Context is strictly historical per signal date; no labels or future bars are
+    used. Forecasts are cached per (context, horizon) across Optuna trials.
+    """
+    key = (int(context), int(horizon))
+    if key in _KRONOS_CACHE:
+        return _KRONOS_CACHE[key]
+    predictor = _load_kronos()
+    rows: list[dict[str, Any]] = []
+    for asset in config["data"]["assets"]:
+        asset_rows = features[features["asset"].eq(asset)].sort_values("date").copy()
+        asset_rows["date"] = pd.to_datetime(asset_rows["date"])
+        dates = asset_rows["date"].to_numpy(dtype="datetime64[ns]")
+        position = {d: i for i, d in enumerate(dates)}
+        ohlcv = asset_rows[["open", "high", "low", "close", "volume"]].to_numpy(dtype=float)
+        for signal_date in signal_dates:
+            pos = position.get(np.datetime64(signal_date).astype("datetime64[ns]"))
+            if pos is None:
+                continue
+            start = max(0, pos - int(context) + 1)
+            window = ohlcv[start : pos + 1]
+            if len(window) < 20:
+                continue
+            idx = pd.date_range(pd.Timestamp(dates[start]), periods=len(window), freq="D")
+            df = pd.DataFrame(window, columns=["open", "high", "low", "close", "volume"], index=idx)
+            x_stamp = pd.Series(idx)
+            y_stamp = pd.Series(pd.date_range(idx[-1] + pd.Timedelta(days=1), periods=int(horizon), freq="D"))
+            pred_df = predictor.predict(df, x_stamp, y_stamp, pred_len=int(horizon), verbose=False)
+            last_actual = float(ohlcv[pos][3])
+            pred_close = float(pred_df["close"].iloc[-1])
+            pred = np.log(pred_close) - np.log(last_actual) if last_actual > 0.0 and pred_close > 0.0 else 0.0
+            rows.append(
+                {"date": pd.Timestamp(dates[pos]), "asset": asset, "prediction": float(pred), "positive": float(pred) > 0.0}
+            )
+    result = pd.DataFrame(rows)
+    _KRONOS_CACHE[key] = result
+    return result
+
+
+def walk_forward_timesfm(
+    features: pd.DataFrame,
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    context: int = 256,
+    horizon: int = 5,
+) -> pd.DataFrame:
+    """Zero-shot TimesFM log-close forecasts mapped to 5-session returns.
+
+    Context is strictly historical per signal date; no labels or future bars are
+    used. Forecasts are cached per (context, horizon) across Optuna trials.
+    """
+    key = (int(context), int(horizon))
+    if key in _TIMESFM_CACHE:
+        return _TIMESFM_CACHE[key]
+    model = _load_timesfm()
+    rows: list[dict[str, Any]] = []
+    for asset in config["data"]["assets"]:
+        asset_rows = features[features["asset"].eq(asset)].sort_values("date").copy()
+        asset_rows["date"] = pd.to_datetime(asset_rows["date"])
+        log_close = np.log(asset_rows["close"].to_numpy(dtype=float))
+        dates = asset_rows["date"].to_numpy(dtype="datetime64[ns]")
+        position = {d: i for i, d in enumerate(dates)}
+        inputs: list[np.ndarray] = []
+        indices: list[int] = []
+        for signal_date in signal_dates:
+            pos = position.get(np.datetime64(signal_date).astype("datetime64[ns]"))
+            if pos is None:
+                continue
+            start = max(0, pos - int(context) + 1)
+            ctx = log_close[start : pos + 1]
+            if len(ctx) < 2:
+                continue
+            inputs.append(ctx.astype(np.float32))
+            indices.append(pos)
+        chunk = 1024
+        for base in range(0, len(inputs), chunk):
+            mean, _ = model.forecast(horizon=int(horizon), inputs=inputs[base : base + chunk])
+            for offset, pos in enumerate(indices[base : base + chunk]):
+                last = float(log_close[pos])
+                pred = float(mean[offset][int(horizon) - 1]) - last
+                rows.append(
+                    {"date": pd.Timestamp(dates[pos]), "asset": asset, "prediction": pred, "positive": pred > 0.0}
+                )
+    result = pd.DataFrame(rows)
+    _TIMESFM_CACHE[key] = result
+    return result
 
 
 def _fit_ridge(x: np.ndarray, y: np.ndarray, alpha: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

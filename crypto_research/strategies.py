@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .models import walk_forward_ar, walk_forward_ridge
+from .models import walk_forward_ar, walk_forward_kronos, walk_forward_ridge, walk_forward_timesfm
 
 
 ASSETS = ("BTC", "ETH")
@@ -125,6 +125,26 @@ def build_targets(
         raw = _equal_positive(predictions, threshold=threshold)
     elif mode == "ar":
         predictions = walk_forward_ar(features, dates, config, horizon=int(params.get("horizon", 5)))
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "timesfm":
+        predictions = walk_forward_timesfm(
+            features,
+            dates,
+            config,
+            context=int(params.get("context", 256)),
+            horizon=int(params.get("horizon", 5)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "kronos":
+        predictions = walk_forward_kronos(
+            features,
+            dates,
+            config,
+            context=int(params.get("context", 256)),
+            horizon=int(params.get("horizon", 5)),
+        )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
         raw = _equal_positive(predictions, threshold=threshold)
     else:
