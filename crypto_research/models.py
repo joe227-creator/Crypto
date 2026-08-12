@@ -214,6 +214,152 @@ def _load_kronos() -> Any:
     return _KRONOS_PREDICTOR
 
 
+def _load_kronos_trainable() -> tuple[Any, Any, Any]:
+    import sys as _sys
+    import torch
+    from pathlib import Path as _Path
+
+    root = _Path(__file__).resolve().parents[1] / "external" / "kronos"
+    if str(root) not in _sys.path:
+        _sys.path.insert(0, str(root))
+    from model import Kronos, KronosPredictor, KronosTokenizer, calc_time_stamps
+
+    model_root = Path(__file__).resolve().parents[1] / "models"
+    tokenizer = KronosTokenizer.from_pretrained(
+        model_root / "kronos-tokenizer-base", local_files_only=True
+    )
+    model = Kronos.from_pretrained(model_root / "kronos-base", local_files_only=True)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer = tokenizer.to(device)
+    model = model.to(device)
+    return model, tokenizer, (KronosPredictor, calc_time_stamps, device)
+
+
+def _fine_tune_kronos_head(
+    model: Any,
+    tokenizer: Any,
+    samples: list[tuple[np.ndarray, pd.DatetimeIndex]],
+    learning_rate: float,
+    steps: int,
+    calc_time_stamps: Any,
+    device: Any,
+) -> None:
+    import torch
+
+    token_inputs: list[tuple[Any, Any, Any, Any]] = []
+    with torch.no_grad():
+        for values, timestamps in samples:
+            tensor = torch.as_tensor(values[None, ...], dtype=torch.float32, device=device)
+            encoded = tokenizer.encode(tensor, half=True)
+            stamp = torch.as_tensor(
+                calc_time_stamps(pd.Series(timestamps)).values[None, ...],
+                dtype=torch.float32,
+                device=device,
+            )
+            token_inputs.append(
+                (encoded[0][:, :-1], encoded[1][:, :-1], stamp[:, :-1], encoded[0][:, 1:])
+            )
+            token_inputs[-1] = (*token_inputs[-1], encoded[1][:, 1:])
+    for parameter in model.parameters():
+        parameter.requires_grad_(False)
+    for parameter in model.head.parameters():
+        parameter.requires_grad_(True)
+    optimizer = torch.optim.AdamW(model.head.parameters(), lr=float(learning_rate), weight_decay=1e-4)
+    model.eval()
+    model.head.train()
+    loss_fn = torch.nn.CrossEntropyLoss()
+    for step in range(int(steps)):
+        optimizer.zero_grad(set_to_none=True)
+        loss_total = torch.zeros((), device=device)
+        for input_s1, input_s2, stamp, target_s1, target_s2 in token_inputs:
+            s1_logits, s2_logits = model(
+                input_s1,
+                input_s2,
+                stamp=stamp,
+                use_teacher_forcing=True,
+                s1_targets=target_s1,
+            )
+            tail = slice(max(0, s1_logits.shape[1] - 5), None)
+            loss_total = loss_total + loss_fn(s1_logits[:, tail].reshape(-1, s1_logits.shape[-1]), target_s1[:, tail].reshape(-1))
+            loss_total = loss_total + loss_fn(s2_logits[:, tail].reshape(-1, s2_logits.shape[-1]), target_s2[:, tail].reshape(-1))
+        loss_total.backward()
+        torch.nn.utils.clip_grad_norm_(model.head.parameters(), 1.0)
+        optimizer.step()
+    model.eval()
+
+
+def walk_forward_kronos_finetune_static(
+    features: pd.DataFrame,
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    context: int = 128,
+    learning_rate: float = 1e-5,
+    steps: int = 1,
+    horizon: int = 5,
+) -> pd.DataFrame:
+    """Fine-tune Kronos head on pre-validation token paths, then freeze."""
+    import gc
+    import torch
+
+    rows: list[dict[str, Any]] = []
+    validation_start = pd.Timestamp(config["evaluation"]["validation_start"])
+    for asset in config["data"]["assets"]:
+        model, tokenizer, helpers = _load_kronos_trainable()
+        predictor_type, calc_time_stamps, device = helpers
+        predictor = predictor_type(model=model, tokenizer=tokenizer, max_context=512, device=str(device))
+        asset_rows = features[features["asset"].eq(asset)].sort_values("date").copy()
+        asset_rows["date"] = pd.to_datetime(asset_rows["date"])
+        dates = pd.DatetimeIndex(asset_rows["date"])
+        bars = asset_rows[["open", "high", "low", "close", "volume"]].to_numpy(dtype=float)
+        amount = bars[:, 4:5] * bars[:, :4].mean(axis=1, keepdims=True)
+        full_bars = np.concatenate([bars, amount], axis=1)
+        train_positions = [
+            index
+            for index in range(int(context) - 1, len(asset_rows) - int(horizon))
+            if dates[index] >= pd.Timestamp(config["evaluation"]["train_start"])
+            and dates[index] <= pd.Timestamp(config["evaluation"]["train_end"])
+            and dates[index + int(horizon)] < validation_start
+        ][-128:]
+        samples: list[tuple[np.ndarray, pd.DatetimeIndex]] = []
+        for index in train_positions:
+            start = index - int(context) + 1
+            values = full_bars[start : index + 1 + int(horizon)].copy()
+            mean = values[: int(context)].mean(axis=0)
+            scale = values[: int(context)].std(axis=0)
+            scale[scale < 1e-5] = 1.0
+            values = np.clip((values - mean) / (scale + 1e-5), -5.0, 5.0).astype(np.float32)
+            samples.append((values, dates[start : index + 1 + int(horizon)]))
+        if len(samples) >= 16:
+            _fine_tune_kronos_head(model, tokenizer, samples, learning_rate, steps, calc_time_stamps, device)
+        signal_positions = [
+            (index, date)
+            for index, date in enumerate(dates)
+            if date >= validation_start and index >= int(context) - 1
+        ]
+        for batch_start in range(0, len(signal_positions), 32):
+            batch = signal_positions[batch_start : batch_start + 32]
+            dfs: list[pd.DataFrame] = []
+            x_stamps: list[pd.Series] = []
+            y_stamps: list[pd.Series] = []
+            for index, date in batch:
+                start = index - int(context) + 1
+                idx = pd.DatetimeIndex(dates[start : index + 1])
+                dfs.append(pd.DataFrame(bars[start : index + 1], columns=["open", "high", "low", "close", "volume"], index=idx))
+                x_stamps.append(pd.Series(idx))
+                y_stamps.append(pd.Series(pd.date_range(idx[-1] + pd.Timedelta(days=1), periods=int(horizon), freq="D")))
+            forecasts = predictor.predict_batch(dfs, x_stamps, y_stamps, pred_len=int(horizon), sample_count=1, verbose=False)
+            for (index, date), forecast in zip(batch, forecasts):
+                last_actual = float(bars[index, 3])
+                pred_close = float(forecast["close"].iloc[-1])
+                prediction = np.log(pred_close) - np.log(last_actual) if pred_close > 0 and last_actual > 0 else 0.0
+                rows.append({"date": date, "asset": asset, "prediction": float(prediction), "positive": prediction > 0.0})
+        del predictor, model, tokenizer
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    return pd.DataFrame(rows)
+
+
 def walk_forward_kronos(
     features: pd.DataFrame,
     signal_dates: pd.DatetimeIndex,

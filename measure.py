@@ -268,6 +268,14 @@ def _run_optuna(
                 "max_uncertainty": trial.suggest_float("max_uncertainty", 0.05, 0.60),
                 "context": int(config.get("strategy", {}).get("params", {}).get("context", 256)),
             }
+        elif mode == "kronos_finetune_static":
+            params = {
+                "context": trial.suggest_categorical("context", [128, 256]),
+                "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-3, log=True),
+                "steps": trial.suggest_int("steps", 1, 3),
+                "horizon": int(config.get("labels", {}).get("horizon", 5)),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+            }
         elif mode == "hybrid_timesfm_ridge":
             params = {
                 "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
@@ -405,7 +413,7 @@ def main() -> int:
     availability = availability_report()
     mode, params = _primary_config(config)
 
-    if mode in {"timesfm", "timesfm_finetune", "timesfm_finetune_static", "timesfm_confidence", "kronos", "hybrid_timesfm_ridge"}:
+    if mode in {"timesfm", "timesfm_finetune", "timesfm_finetune_static", "timesfm_confidence", "kronos", "kronos_finetune_static", "hybrid_timesfm_ridge"}:
         require_available(mode)
 
     stage0_results: list[dict[str, Any]] = []
@@ -432,7 +440,7 @@ def main() -> int:
     _write_json(artifact_dir / "foundation_availability.json", availability)
 
     optuna_result: dict[str, Any] | None = None
-    if bool(config.get("optuna", {}).get("enabled", False)) and mode in {"ridge", "lstm", "tcn", "transformer", "ridge_covariance", "ridge_label_clip", "ridge_adaptive_refit", "ridge_residual_gate", "ridge_residual_size", "ridge_conformal_gate", "ridge_adaptive_covariance", "ridge_ar_blend", "ar", "timesfm", "timesfm_finetune", "timesfm_finetune_static", "timesfm_confidence", "kronos", "hybrid_timesfm_ridge", "xgboost", "lightgbm"}:
+    if bool(config.get("optuna", {}).get("enabled", False)) and mode in {"ridge", "lstm", "tcn", "transformer", "ridge_covariance", "ridge_label_clip", "ridge_adaptive_refit", "ridge_residual_gate", "ridge_residual_size", "ridge_conformal_gate", "ridge_adaptive_covariance", "ridge_ar_blend", "ar", "timesfm", "timesfm_finetune", "timesfm_finetune_static", "timesfm_confidence", "kronos", "kronos_finetune_static", "hybrid_timesfm_ridge", "xgboost", "lightgbm"}:
         optuna_result = _run_optuna(market, features, feature_columns, config, baseline_turnover, artifact_dir)
         params = {**params, **optuna_result["best_params"]}
     if mode == "stage0":

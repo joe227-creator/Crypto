@@ -10,6 +10,7 @@ import pandas as pd
 from .models import (
     walk_forward_ar,
     walk_forward_kronos,
+    walk_forward_kronos_finetune_static,
     walk_forward_lightgbm,
     walk_forward_lstm,
     walk_forward_ridge,
@@ -500,6 +501,18 @@ def build_targets(
         )
         predictions = _apply_uncertainty_gate(
             predictions, float(params.get("max_uncertainty", 0.0))
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "kronos_finetune_static":
+        predictions = walk_forward_kronos_finetune_static(
+            features,
+            dates,
+            config,
+            context=int(params.get("context", 128)),
+            learning_rate=float(params.get("learning_rate", 1e-5)),
+            steps=int(params.get("steps", 1)),
+            horizon=int(params.get("horizon", 5)),
         )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
         raw = _equal_positive(predictions, threshold=threshold)
