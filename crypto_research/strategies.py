@@ -121,10 +121,12 @@ def build_targets(
             alpha=float(params.get("alpha", 10.0)),
             use_onchain=bool(params.get("use_onchain", True)),
         )
-        raw = _equal_positive(predictions, threshold=FIXED_SIGNAL_THRESHOLD)
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
     elif mode == "ar":
         predictions = walk_forward_ar(features, dates, config, horizon=int(params.get("horizon", 5)))
-        raw = _equal_positive(predictions, threshold=FIXED_SIGNAL_THRESHOLD)
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
     else:
         raise ValueError(f"Unknown strategy mode: {mode}")
     targets = _shift_to_next_open(raw, dates)

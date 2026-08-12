@@ -29,10 +29,14 @@
     "seeds": [11, 22, 33, 44, 55]
   },
   "strategy": {
-    "mode": "stage0"
+    "mode": "ridge",
+    "params": {
+      "use_onchain": false,
+      "threshold": 0.0
+    }
   },
   "optuna": {
-    "enabled": false,
+    "enabled": true,
     "n_trials": 8,
     "seed": 2026
   }
