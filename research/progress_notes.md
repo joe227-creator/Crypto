@@ -144,3 +144,17 @@ Fair bush stopped. No child beats fixed control robustly, no parent is promoted,
 and no deployment recommendation changes: retain simple controls and paper-trade
 nothing. Continue only with new evidence-backed hypotheses or unblocked
 foundation-model dependencies.
+
+## Stage 3 Foundation Bush
+
+TimesFM 2.5 and Kronos source repositories plus local checkpoints were copied
+under ignored `external/` and `models/` paths. Adapters load repository-local
+files only; shared Hugging Face cache is not used.
+
+- TimesFM 2.5 zero-shot, local commit `84484e5`: validation `0.1488174`, frozen
+  test `-0.4697066`, turnover `3.3396`, Sharpe `-0.5150`; rejected.
+- Kronos base zero-shot, local commit `84484e5`: validation `-0.7314223`, frozen
+  test `-0.8563088`, turnover `5.1900`, Sharpe `-0.7259`; rejected.
+
+Stage 3 foundation bush stopped. Threshold Ridge remains promoted research
+parent; deeper architectures remain unstarted. Paper-trade nothing.

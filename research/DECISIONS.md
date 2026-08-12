@@ -128,6 +128,12 @@ adjustment `0.1323719`, pooled Ridge `0.1021681`, cash overlay `0.1197785`,
 hysteresis `0.1946880`, volatility gates `-0.4211` or lower, and AR threshold
 `-0.8077` on frozen test. These remain rejected siblings.
 
+Stage 3 foundation siblings then ran from promoted threshold parent using
+repository-local model files. TimesFM 2.5 zero-shot scored validation `0.1488174`
+and frozen test `-0.4697066`; Kronos base zero-shot scored validation `-0.7314223`
+and frozen test `-0.8563088`. Both lost after costs and were rejected. Model
+files are isolated under `models/`; adapters do not use shared cache paths.
+
 Promoted threshold result has one positive and three zero-return test windows;
 seed score spread is zero because implementation is deterministic. Repeated seed
 rows are not independent stochastic evidence. Regime slices, threshold
@@ -141,7 +147,7 @@ are local smoke output. Their commit field identifies HEAD at generation time.
 Deterministic control metrics may match the fair control, but these files are
 not archived fair-run anchor artifacts.
 
-TimesFM and Kronos are now locally available in the runtime report, but remain
-unrun. New bush requires fresh literature evidence, independent stochastic
-evaluation, and completion of promoted threshold robustness checks. Server
-compute remains credit-blocked.
+TimesFM and Kronos foundation bush is answered and rejected. Deeper architectures
+remain unstarted. Any new bush requires fresh literature evidence, independent
+stochastic evaluation, and completion of promoted threshold robustness checks.
+Server compute remains credit-blocked.

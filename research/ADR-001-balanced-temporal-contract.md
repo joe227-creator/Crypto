@@ -56,6 +56,10 @@ return `0.0375513`, maximum drawdown `-0.0364`, Sharpe `0.7491`, and turnover
 Clipping, partial adjustment, pooled Ridge, cash overlay, hysteresis,
 volatility-gate, and AR-threshold follow-ups did not improve promoted candidate.
 
+Stage 3 foundation siblings used repository-local TimesFM 2.5 and Kronos base
+weights. TimesFM scored frozen test `-0.4697066`; Kronos scored `-0.8563088`.
+Both were rejected after costs. Deeper architectures remain unstarted.
+
 ## Evidence Gaps
 
 Promoted candidate has one positive and three zero-return frozen-test windows.

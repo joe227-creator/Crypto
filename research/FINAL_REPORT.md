@@ -120,6 +120,8 @@ Fair snapshot anchor `51b44ade-505c-44fc-8ca2-adb724bb9a63`
         ├── Hysteresis Ridge
         ├── Volatility-gated Ridge
         └── Cost-aware threshold Ridge [promoted research candidate]
+            ├── TimesFM 2.5 zero-shot [rejected]
+            └── Kronos base zero-shot [rejected]
 ```
 
 Historical server planning and smoke nodes:
@@ -182,6 +184,8 @@ primary; validation score is selection-only.
 | Hysteresis Ridge | `f14e7395-4126-4a0f-9ecb-35f87ff101a4` | 0.0617274 | -0.3176550 | 2.1506 | alpha 0.8263, band 0.00988 |
 | Volatility-gated Ridge | `140323a1-1d02-4081-9bf9-00a3537fb07b` | -0.6569587 | -0.7909709 | 4.7239 | alpha 80.6384, threshold 0.7222 |
 | Cost-aware threshold Ridge | local `ba9dab5` / branch `dc031c4` | 0.1135487 | 0.2132863 | 1.4794 | alpha 0.1527, threshold 0.02682 |
+| TimesFM 2.5 zero-shot | local `84484e5` | 0.1488174 | -0.4697066 | 3.3396 | context 256, threshold 0.01438 |
+| Kronos base zero-shot | local `84484e5` | -0.7314223 | -0.8563088 | 5.1900 | context 256, threshold 0.02735 |
 
 Cost-aware threshold Ridge beats fair control score `-0.2189362`, ETH
 buy-and-hold `-0.0746825`, and all prior fair siblings. Test mean rolling return
@@ -196,6 +200,11 @@ clipping test `0.1946880`, partial adjustment `0.1323719`, pooled Ridge
 `0.1021681`, cash overlay `0.1197785`, hysteresis `0.1946880`, volatility gates
 `-0.4211` or lower, and AR threshold `-0.8077`. None beats promoted threshold
 Ridge on frozen test with stronger robustness evidence.
+
+Foundation follow-ups were then tested from promoted threshold parent using
+repository-local weights. TimesFM 2.5 scored validation `0.1488174` but frozen
+test `-0.4697066`; Kronos base scored validation `-0.7314223` and frozen test
+`-0.8563088`. Both were rejected after costs.
 
 ## Historical / Pre-Balanced Stage 2 Screening
 
@@ -238,10 +247,15 @@ parent; both lost, so no deeper stacked-bush node was created.
 ## Foundation Models
 
 TimesFM and Kronos research was reviewed through `orx lit`, `orx paper`, and
-official repositories. Current local smoke availability reports both packages
-and PyTorch available, but no foundation-model run has been answered. The
-harness never silently replaces a foundation model with another model. Stage 3
-remains open, not rejected.
+official repositories. Source repositories are cloned under ignored
+`external/timesfm` and `external/kronos`; weights are copied under ignored
+repository-local `models/` paths. TimesFM 2.5 zero-shot validation score was
+`0.1488174`, but frozen-test score was `-0.4697066`, with mean test rolling
+return `-0.0628`, Sharpe `-0.5150`, and turnover `3.3396`. Kronos base zero-shot
+validation score was `-0.7314223`, frozen-test score `-0.8563088`, mean test
+rolling return `-0.1397`, Sharpe `-0.7259`, and turnover `5.1900`. Both were
+rejected against promoted threshold Ridge. Stage 3 foundation bush is complete
+and rejected; deeper architectures remain unstarted.
 
 ## Blocker And Recommendation
 
