@@ -53,3 +53,17 @@ def test_timesfm_confidence_mode_applies_uncertainty_gate(monkeypatch) -> None:
 
     assert not targets.empty
     assert (targets[["BTC", "ETH"]] == 0.0).all().all()
+
+
+def test_residual_size_targets_use_signal_to_noise() -> None:
+    predictions = pd.DataFrame(
+        [
+            {"date": pd.Timestamp("2024-01-01"), "asset": "BTC", "prediction": 0.10, "uncertainty": 0.01},
+            {"date": pd.Timestamp("2024-01-01"), "asset": "ETH", "prediction": 0.04, "uncertainty": 0.02},
+        ]
+    )
+
+    targets = strategies._residual_size_targets(predictions, multiplier=1.0, threshold=0.0)
+
+    assert targets.loc[pd.Timestamp("2024-01-01"), "BTC"] > targets.loc[pd.Timestamp("2024-01-01"), "ETH"]
+    assert abs(float(targets.loc[pd.Timestamp("2024-01-01"), ["BTC", "ETH"]].sum()) - 1.0) < 1e-12

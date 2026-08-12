@@ -103,6 +103,36 @@ def _blend_predictions(
     return merged[["date", "asset", "prediction", "positive"]]
 
 
+def _residual_gate(predictions: pd.DataFrame, multiplier: float) -> pd.DataFrame:
+    if predictions.empty or "uncertainty" not in predictions:
+        return predictions
+    gated = predictions.copy()
+    gated["prediction"] = gated["prediction"] - float(multiplier) * gated["uncertainty"]
+    gated["positive"] = gated["prediction"] > 0.0
+    return gated
+
+
+def _residual_size_targets(
+    predictions: pd.DataFrame,
+    multiplier: float,
+    threshold: float,
+) -> pd.DataFrame:
+    if predictions.empty or "uncertainty" not in predictions:
+        return pd.DataFrame(columns=[*ASSETS])
+    scored = predictions.copy()
+    scored["score"] = scored["prediction"] - float(multiplier) * scored["uncertainty"]
+    rows: list[dict[str, Any]] = []
+    for date, group in scored.groupby("date"):
+        positive = group[group["score"] > float(threshold)]
+        total = float(positive["score"].sum())
+        weights = {
+            asset: (float(positive.loc[positive["asset"].eq(asset), "score"].sum()) / total if total else 0.0)
+            for asset in ASSETS
+        }
+        rows.append({"date": date, **weights})
+    return pd.DataFrame(rows).set_index("date").sort_index()
+
+
 def _apply_uncertainty_gate(predictions: pd.DataFrame, maximum: float) -> pd.DataFrame:
     if predictions.empty or maximum <= 0.0 or "uncertainty" not in predictions:
         return predictions
@@ -243,6 +273,37 @@ def build_targets(
         )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
         raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_gate":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_size":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+        )
+        raw = _residual_size_targets(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+            float(params.get("threshold", FIXED_SIGNAL_THRESHOLD)),
+        )
     elif mode == "ridge_adaptive_covariance":
         predictions = walk_forward_ridge(
             features,

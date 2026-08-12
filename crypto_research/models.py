@@ -388,6 +388,7 @@ def walk_forward_ridge(
         asset_rows = features[features["asset"].eq(asset)].sort_values("date").copy()
         asset_dates = pd.DatetimeIndex(asset_rows["date"])
         model: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
+        uncertainty = 0.0
         last_fit_index = -refit_sessions
         for signal_index, signal_date in enumerate(signal_dates):
             current = asset_rows[asset_rows["date"].eq(signal_date)]
@@ -412,6 +413,8 @@ def walk_forward_ridge(
                     if label_clip is not None:
                         y = np.clip(y, -float(label_clip), float(label_clip))
                     model = _fit_ridge(x, y, alpha)
+                    residuals = y - _predict(model, x)
+                    uncertainty = max(float(np.std(residuals, ddof=0)), 1e-6)
                     last_fit_index = signal_index
             if model is None:
                 continue
@@ -419,7 +422,15 @@ def walk_forward_ridge(
             if not np.isfinite(x_now).all():
                 continue
             prediction = float(_predict(model, x_now)[0])
-            rows.append({"date": signal_date, "asset": asset, "prediction": prediction, "positive": prediction > 0.0})
+            rows.append(
+                {
+                    "date": signal_date,
+                    "asset": asset,
+                    "prediction": prediction,
+                    "uncertainty": uncertainty,
+                    "positive": prediction > 0.0,
+                }
+            )
     return pd.DataFrame(rows)
 
 
