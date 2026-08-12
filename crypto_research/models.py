@@ -373,6 +373,8 @@ def walk_forward_ridge(
     use_onchain: bool,
     label_clip: float | None = None,
     refit_sessions: int | None = None,
+    calibration_fraction: float | None = None,
+    uncertainty_quantile: float = 0.9,
 ) -> pd.DataFrame:
     """Predict each asset using only labels ending before current signal date."""
     selected_features = [c for c in feature_columns if use_onchain or not c.startswith("onchain_")]
@@ -408,13 +410,29 @@ def walk_forward_ridge(
                     & (asset_rows["label_end_date"] < label_cutoff)
                 ].dropna(subset=[*selected_features, "label"])
                 if train["date"].nunique() >= min_train_days:
-                    x = train[selected_features].to_numpy(dtype=float)
-                    y = train["label"].to_numpy(dtype=float)
+                    calibration = pd.DataFrame()
+                    fit_train = train
+                    if calibration_fraction is not None and 0.0 < float(calibration_fraction) < 0.5:
+                        calibration_size = max(20, int(len(train) * float(calibration_fraction)))
+                        if len(train) - calibration_size >= min_train_days:
+                            fit_train = train.iloc[:-calibration_size]
+                            calibration = train.iloc[-calibration_size:]
+                    x = fit_train[selected_features].to_numpy(dtype=float)
+                    y = fit_train["label"].to_numpy(dtype=float)
                     if label_clip is not None:
                         y = np.clip(y, -float(label_clip), float(label_clip))
                     model = _fit_ridge(x, y, alpha)
-                    residuals = y - _predict(model, x)
-                    uncertainty = max(float(np.std(residuals, ddof=0)), 1e-6)
+                    if not calibration.empty:
+                        calibration_x = calibration[selected_features].to_numpy(dtype=float)
+                        calibration_y = calibration["label"].to_numpy(dtype=float)
+                        residuals = np.abs(calibration_y - _predict(model, calibration_x))
+                        uncertainty = max(
+                            float(np.quantile(residuals, float(uncertainty_quantile))),
+                            1e-6,
+                        )
+                    else:
+                        residuals = y - _predict(model, x)
+                        uncertainty = max(float(np.std(residuals, ddof=0)), 1e-6)
                     last_fit_index = signal_index
             if model is None:
                 continue

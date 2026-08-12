@@ -304,6 +304,24 @@ def build_targets(
             float(params.get("uncertainty_multiplier", 0.0)),
             float(params.get("threshold", FIXED_SIGNAL_THRESHOLD)),
         )
+    elif mode == "ridge_conformal_gate":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+            calibration_fraction=0.2,
+            uncertainty_quantile=float(params.get("uncertainty_quantile", 0.9)),
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 1.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
     elif mode == "ridge_adaptive_covariance":
         predictions = walk_forward_ridge(
             features,
