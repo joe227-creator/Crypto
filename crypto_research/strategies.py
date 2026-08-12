@@ -432,6 +432,20 @@ def build_targets(
         )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
         raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "timesfm_finetune_static":
+        predictions = walk_forward_timesfm_finetune(
+            features,
+            dates,
+            config,
+            context=int(params.get("context", 256)),
+            learning_rate=float(params.get("learning_rate", 1e-5)),
+            steps=int(params.get("steps", 1)),
+            refit_sessions=10**9,
+            horizon=int(params.get("horizon", 5)),
+            static=True,
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
     elif mode == "kronos":
         predictions = walk_forward_kronos(
             features,

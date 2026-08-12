@@ -113,6 +113,7 @@ def walk_forward_timesfm_finetune(
     steps: int = 1,
     refit_sessions: int = 21,
     horizon: int = 5,
+    static: bool = False,
 ) -> pd.DataFrame:
     """Causal TimesFM point-head fine-tuning on historical price paths."""
     import torch
@@ -131,7 +132,12 @@ def walk_forward_timesfm_finetune(
             position_now = position.get(np.datetime64(signal_date).astype("datetime64[ns]"))
             if position_now is None:
                 continue
-            if signal_index - last_fit_index >= int(refit_sessions):
+            should_fit = (
+                model is None and pd.Timestamp(signal_date) >= pd.Timestamp(config["evaluation"]["validation_start"])
+                if static
+                else signal_index - last_fit_index >= int(refit_sessions)
+            )
+            if should_fit:
                 cutoff_position = position_now - int(config["evaluation"].get("embargo_sessions", 1))
                 if cutoff_position > 0:
                     label_cutoff = dates[cutoff_position]
