@@ -157,6 +157,30 @@ def _run_optuna(
                 "threshold": trial.suggest_float("threshold", 0.0, 0.03),
                 "context": int(config.get("strategy", {}).get("params", {}).get("context", 256)),
             }
+        elif mode == "xgboost":
+            params = {
+                "n_estimators": trial.suggest_int("n_estimators", 50, 500),
+                "max_depth": trial.suggest_int("max_depth", 3, 10),
+                "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.2, log=True),
+                "subsample": trial.suggest_float("subsample", 0.6, 1.0),
+                "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
+                "reg_alpha": trial.suggest_float("reg_alpha", 0.001, 1.0, log=True),
+                "reg_lambda": trial.suggest_float("reg_lambda", 0.001, 1.0, log=True),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
+            }
+        elif mode == "lightgbm":
+            params = {
+                "n_estimators": trial.suggest_int("n_estimators", 50, 500),
+                "max_depth": trial.suggest_int("max_depth", 3, 10),
+                "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.2, log=True),
+                "subsample": trial.suggest_float("subsample", 0.6, 1.0),
+                "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
+                "reg_alpha": trial.suggest_float("reg_alpha", 0.001, 1.0, log=True),
+                "reg_lambda": trial.suggest_float("reg_lambda", 0.001, 1.0, log=True),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
+            }
         elif mode == "timesfm_confidence":
             params = {
                 "threshold": trial.suggest_float("threshold", 0.0, 0.03),
@@ -322,7 +346,7 @@ def main() -> int:
     _write_json(artifact_dir / "foundation_availability.json", availability)
 
     optuna_result: dict[str, Any] | None = None
-    if bool(config.get("optuna", {}).get("enabled", False)) and mode in {"ridge", "ar", "timesfm", "timesfm_confidence", "kronos", "hybrid_timesfm_ridge"}:
+    if bool(config.get("optuna", {}).get("enabled", False)) and mode in {"ridge", "ar", "timesfm", "timesfm_confidence", "kronos", "hybrid_timesfm_ridge", "xgboost", "lightgbm"}:
         optuna_result = _run_optuna(market, features, feature_columns, config, baseline_turnover, artifact_dir)
         params = {**params, **optuna_result["best_params"]}
     if mode == "stage0":

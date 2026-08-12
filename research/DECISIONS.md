@@ -160,3 +160,8 @@ TimesFM and Kronos foundation bush is answered and rejected. Deeper architecture
 remain unstarted. Any new bush requires fresh literature evidence, independent
 stochastic evaluation, and completion of promoted threshold robustness checks.
 Server compute remains credit-blocked.
+
+XGBoost and LightGBM were then tested as cost-aware tree-model children under
+promoted threshold Ridge. XGBoost scored frozen test `-0.4176403`; LightGBM
+scored `-0.4602400`. Both were rejected. Promoted linear Ridge with cost-aware
+threshold remains the single research parent.

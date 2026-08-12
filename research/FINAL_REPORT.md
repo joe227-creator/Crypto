@@ -122,8 +122,11 @@ Fair snapshot anchor `51b44ade-505c-44fc-8ca2-adb724bb9a63`
         └── Cost-aware threshold Ridge [promoted research candidate]
             ├── TimesFM 2.5 zero-shot [rejected]
             ├── Kronos base zero-shot [rejected]
-            ├── TimesFM-to-Ridge hybrid [rejected]
-            └── TimesFM uncertainty gate [rejected]
+             ├── TimesFM-to-Ridge hybrid [rejected]
+-            └── TimesFM uncertainty gate [rejected]
++            ├── TimesFM uncertainty gate [rejected]
++            ├── XGBoost cost-aware [rejected]
++            └── LightGBM cost-aware [rejected]
 ```
 
 Historical server planning and smoke nodes:
@@ -190,6 +193,8 @@ primary; validation score is selection-only.
 | Kronos base zero-shot | local `84484e5` | -0.7314223 | -0.8563088 | 5.1900 | context 256, threshold 0.02735 |
 | TimesFM-to-Ridge hybrid | local Stage 4 child | 0.0335998 | -0.0728067 | 2.1762 | TimesFM feature, alpha 0.1527, threshold 0.02682 |
 | TimesFM uncertainty gate | local Stage 4 child | 0.2775677 | -0.5483675 | 2.5748 | max uncertainty 0.4808, threshold 0.01675 |
+| XGBoost cost-aware | local Stage 1 tree child | -0.3681458 | -0.4176403 | 3.0949 | n=435, depth=3, lr=0.017, threshold=0.0196 |
+| LightGBM cost-aware | local Stage 1 tree child | -0.4197973 | -0.4602400 | 2.8373 | n=473, depth=5, lr=0.011, threshold=0.0223 |
 
 Cost-aware threshold Ridge beats fair control score `-0.2189362`, ETH
 buy-and-hold `-0.0746825`, and all prior fair siblings. Test mean rolling return
@@ -215,6 +220,16 @@ into Ridge scored validation `0.0335998` and frozen test `-0.0728067`. A
 TimesFM uncertainty abstention gate scored validation `0.2775677` and frozen
 test `-0.5483675`, with high test drawdown and negative Sharpe. Both lost to
 promoted threshold Ridge and were rejected.
+
+XGBoost and LightGBM gradient boosting models were also tested under the same
+causal walk-forward contract with identical technical features and labels,
+motivated by arXiv:2606.00060, which documents XGBoost outperforming neural
+alternatives on hourly BTC data. XGBoost scored validation `-0.3681458`,
+frozen test `-0.4176403`, with turnover `3.0949` and Sharpe `-0.3669`.
+LightGBM scored validation `-0.4197973`, frozen test `-0.4602400`, with
+turnover `2.8373` and Sharpe `-0.5272`. Both were heavily rejected against
+the promoted threshold Ridge `0.2132863`. Linear Ridge with cost-aware
+threshold remains dominant.
 
 ## Historical / Pre-Balanced Stage 2 Screening
 

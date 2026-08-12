@@ -10,9 +10,11 @@ import pandas as pd
 from .models import (
     walk_forward_ar,
     walk_forward_kronos,
+    walk_forward_lightgbm,
     walk_forward_ridge,
     walk_forward_timesfm,
     walk_forward_timesfm_ridge,
+    walk_forward_xgboost,
 )
 
 
@@ -162,7 +164,41 @@ def build_targets(
         )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
         raw = _equal_positive(predictions, threshold=threshold)
-    elif mode == "timesfm_confidence":
+    elif mode == "xgboost":
+        predictions = walk_forward_xgboost(
+            features,
+            feature_columns,
+            dates,
+            config,
+            n_estimators=int(params.get("n_estimators", 200)),
+            max_depth=int(params.get("max_depth", 6)),
+            learning_rate=float(params.get("learning_rate", 0.1)),
+            subsample=float(params.get("subsample", 0.8)),
+            colsample_bytree=float(params.get("colsample_bytree", 0.8)),
+            reg_alpha=float(params.get("reg_alpha", 0.0)),
+            reg_lambda=float(params.get("reg_lambda", 1.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "lightgbm":
+        predictions = walk_forward_lightgbm(
+            features,
+            feature_columns,
+            dates,
+            config,
+            n_estimators=int(params.get("n_estimators", 200)),
+            max_depth=int(params.get("max_depth", 6)),
+            learning_rate=float(params.get("learning_rate", 0.1)),
+            subsample=float(params.get("subsample", 0.8)),
+            colsample_bytree=float(params.get("colsample_bytree", 0.8)),
+            reg_alpha=float(params.get("reg_alpha", 0.0)),
+            reg_lambda=float(params.get("reg_lambda", 1.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "timesfm":
         predictions = walk_forward_timesfm(
             features,
             dates,

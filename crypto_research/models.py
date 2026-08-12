@@ -208,6 +208,162 @@ def _predict(model: tuple[np.ndarray, np.ndarray, np.ndarray], x: np.ndarray) ->
     return np.column_stack([np.ones(len(x)), (x - mean) / scale]) @ coefficients
 
 
+def walk_forward_xgboost(
+    features: pd.DataFrame,
+    feature_columns: list[str],
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    n_estimators: int = 200,
+    max_depth: int = 6,
+    learning_rate: float = 0.1,
+    subsample: float = 0.8,
+    colsample_bytree: float = 0.8,
+    reg_alpha: float = 0.0,
+    reg_lambda: float = 1.0,
+    use_onchain: bool = True,
+) -> pd.DataFrame:
+    """Causal XGBoost per-asset, expanding-window, same features as Ridge."""
+    import xgboost as _xgb
+
+    selected_features = [c for c in feature_columns if use_onchain or not c.startswith("onchain_")]
+    evaluation = config["evaluation"]
+    train_start = pd.Timestamp(evaluation["train_start"])
+    train_end = pd.Timestamp(evaluation["train_end"]) if evaluation.get("train_end") else pd.Timestamp.max
+    validation_end = pd.Timestamp(evaluation["validation_end"]) if evaluation.get("validation_end") else pd.Timestamp.max
+    min_train_days = int(evaluation["min_train_days"])
+    refit_sessions = int(evaluation["refit_sessions"])
+    embargo = int(evaluation.get("embargo_sessions", 1))
+    rows: list[dict[str, Any]] = []
+    for asset in config["data"]["assets"]:
+        asset_rows = features[features["asset"].eq(asset)].sort_values("date").copy()
+        asset_dates = pd.DatetimeIndex(asset_rows["date"])
+        model: Any | None = None
+        last_fit_index = -refit_sessions
+        for signal_index, signal_date in enumerate(signal_dates):
+            current = asset_rows[asset_rows["date"].eq(signal_date)]
+            if current.empty:
+                continue
+            if signal_index - last_fit_index >= refit_sessions or model is None:
+                asset_position = asset_dates.get_loc(signal_date)
+                cutoff_position = asset_position - embargo
+                if cutoff_position <= 0:
+                    continue
+                label_cutoff = asset_dates[cutoff_position]
+                training_end = train_end if signal_date <= validation_end else signal_date
+                train = asset_rows[
+                    (asset_rows["date"] >= train_start)
+                    & (asset_rows["date"] < signal_date)
+                    & (asset_rows["date"] <= training_end)
+                    & (asset_rows["label_end_date"] < label_cutoff)
+                ].dropna(subset=[*selected_features, "label"])
+                if train["date"].nunique() >= min_train_days:
+                    x = train[selected_features].to_numpy(dtype=float)
+                    y = train["label"].to_numpy(dtype=float)
+                    model = _xgb.XGBRegressor(
+                        n_estimators=int(n_estimators),
+                        max_depth=int(max_depth),
+                        learning_rate=float(learning_rate),
+                        subsample=float(subsample),
+                        colsample_bytree=float(colsample_bytree),
+                        reg_alpha=float(reg_alpha),
+                        reg_lambda=float(reg_lambda),
+                        objective="reg:squarederror",
+                        verbosity=0,
+                        n_jobs=1,
+                        random_state=2026,
+                    )
+                    model.fit(x, y)
+                    last_fit_index = signal_index
+            if model is None:
+                continue
+            x_now = current[selected_features].to_numpy(dtype=float)
+            if not np.isfinite(x_now).all():
+                continue
+            prediction = float(model.predict(x_now)[0])
+            rows.append(
+                {"date": signal_date, "asset": asset, "prediction": prediction, "positive": prediction > 0.0}
+            )
+    return pd.DataFrame(rows)
+
+
+def walk_forward_lightgbm(
+    features: pd.DataFrame,
+    feature_columns: list[str],
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    n_estimators: int = 200,
+    max_depth: int = 6,
+    learning_rate: float = 0.1,
+    subsample: float = 0.8,
+    colsample_bytree: float = 0.8,
+    reg_alpha: float = 0.0,
+    reg_lambda: float = 1.0,
+    use_onchain: bool = True,
+) -> pd.DataFrame:
+    """Causal LightGBM per-asset, expanding-window, same features as Ridge."""
+    import lightgbm as _lgb
+
+    selected_features = [c for c in feature_columns if use_onchain or not c.startswith("onchain_")]
+    evaluation = config["evaluation"]
+    train_start = pd.Timestamp(evaluation["train_start"])
+    train_end = pd.Timestamp(evaluation["train_end"]) if evaluation.get("train_end") else pd.Timestamp.max
+    validation_end = pd.Timestamp(evaluation["validation_end"]) if evaluation.get("validation_end") else pd.Timestamp.max
+    min_train_days = int(evaluation["min_train_days"])
+    refit_sessions = int(evaluation["refit_sessions"])
+    embargo = int(evaluation.get("embargo_sessions", 1))
+    rows: list[dict[str, Any]] = []
+    for asset in config["data"]["assets"]:
+        asset_rows = features[features["asset"].eq(asset)].sort_values("date").copy()
+        asset_dates = pd.DatetimeIndex(asset_rows["date"])
+        model: Any | None = None
+        last_fit_index = -refit_sessions
+        for signal_index, signal_date in enumerate(signal_dates):
+            current = asset_rows[asset_rows["date"].eq(signal_date)]
+            if current.empty:
+                continue
+            if signal_index - last_fit_index >= refit_sessions or model is None:
+                asset_position = asset_dates.get_loc(signal_date)
+                cutoff_position = asset_position - embargo
+                if cutoff_position <= 0:
+                    continue
+                label_cutoff = asset_dates[cutoff_position]
+                training_end = train_end if signal_date <= validation_end else signal_date
+                train = asset_rows[
+                    (asset_rows["date"] >= train_start)
+                    & (asset_rows["date"] < signal_date)
+                    & (asset_rows["date"] <= training_end)
+                    & (asset_rows["label_end_date"] < label_cutoff)
+                ].dropna(subset=[*selected_features, "label"])
+                if train["date"].nunique() >= min_train_days:
+                    x = train[selected_features].to_numpy(dtype=float)
+                    y = train["label"].to_numpy(dtype=float)
+                    model = _lgb.LGBMRegressor(
+                        n_estimators=int(n_estimators),
+                        max_depth=int(max_depth),
+                        learning_rate=float(learning_rate),
+                        subsample=float(subsample),
+                        colsample_bytree=float(colsample_bytree),
+                        reg_alpha=float(reg_alpha),
+                        reg_lambda=float(reg_lambda),
+                        objective="regression",
+                        verbosity=-1,
+                        random_state=2026,
+                        n_jobs=1,
+                    )
+                    model.fit(x, y)
+                    last_fit_index = signal_index
+            if model is None:
+                continue
+            x_now = current[selected_features].to_numpy(dtype=float)
+            if not np.isfinite(x_now).all():
+                continue
+            prediction = float(model.predict(x_now)[0])
+            rows.append(
+                {"date": signal_date, "asset": asset, "prediction": prediction, "positive": prediction > 0.0}
+            )
+    return pd.DataFrame(rows)
+
+
 def walk_forward_ridge(
     features: pd.DataFrame,
     feature_columns: list[str],

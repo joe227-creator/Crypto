@@ -172,3 +172,21 @@ causal Ridge feature, then an uncertainty abstention gate was tested.
 
 Stage 4 first bush stopped. Promoted threshold Ridge remains research parent;
 deeper architectures remain unstarted. Paper-trade nothing.
+
+## Stage 1 Tree Model Bush
+
+Literature arXiv:2606.00060 reports XGBoost as strongest configuration on
+hourly BTC walk-forward. XGBoost and LightGBM were tested as cost-aware
+siblings under promoted threshold Ridge using identical features, labels,
+splits, costs, and causal walk-forward contract. Each ran eight Optuna
+trials on validation only.
+
+- XGBoost: validation `-0.3681458`, frozen test `-0.4176403`, turnover
+  `3.0949`, Sharpe `-0.3669`; rejected.
+- LightGBM: validation `-0.4197973`, frozen test `-0.4602400`, turnover
+  `2.8373`, Sharpe `-0.5272`; rejected.
+
+Both were comprehensively below promoted threshold Ridge `0.2132863`.
+Tree models cannot extract a tradable signal from these features under
+these costs. Linear Ridge remains the single research parent.
+Paper-trade nothing.
