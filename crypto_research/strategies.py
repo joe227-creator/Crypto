@@ -11,9 +11,12 @@ from .models import (
     walk_forward_ar,
     walk_forward_kronos,
     walk_forward_lightgbm,
+    walk_forward_lstm,
     walk_forward_ridge,
     walk_forward_timesfm,
     walk_forward_timesfm_ridge,
+    walk_forward_tcn,
+    walk_forward_transformer,
     walk_forward_xgboost,
 )
 
@@ -231,6 +234,51 @@ def build_targets(
             config,
             alpha=float(params.get("alpha", 10.0)),
             use_onchain=bool(params.get("use_onchain", True)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "lstm":
+        predictions = walk_forward_lstm(
+            features,
+            feature_columns,
+            dates,
+            config,
+            hidden_size=int(params.get("hidden_size", 32)),
+            learning_rate=float(params.get("learning_rate", 0.001)),
+            weight_decay=float(params.get("weight_decay", 0.0001)),
+            epochs=int(params.get("epochs", 4)),
+            context=int(params.get("context", 32)),
+            use_onchain=bool(params.get("use_onchain", False)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "tcn":
+        predictions = walk_forward_tcn(
+            features,
+            feature_columns,
+            dates,
+            config,
+            hidden_size=int(params.get("hidden_size", 32)),
+            learning_rate=float(params.get("learning_rate", 0.001)),
+            weight_decay=float(params.get("weight_decay", 0.0001)),
+            epochs=int(params.get("epochs", 4)),
+            context=int(params.get("context", 32)),
+            use_onchain=bool(params.get("use_onchain", False)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "transformer":
+        predictions = walk_forward_transformer(
+            features,
+            feature_columns,
+            dates,
+            config,
+            hidden_size=int(params.get("hidden_size", 32)),
+            learning_rate=float(params.get("learning_rate", 0.001)),
+            weight_decay=float(params.get("weight_decay", 0.0001)),
+            epochs=int(params.get("epochs", 4)),
+            context=int(params.get("context", 32)),
+            use_onchain=bool(params.get("use_onchain", False)),
         )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
         raw = _equal_positive(predictions, threshold=threshold)

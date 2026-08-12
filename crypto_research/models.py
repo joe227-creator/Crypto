@@ -208,6 +208,247 @@ def _predict(model: tuple[np.ndarray, np.ndarray, np.ndarray], x: np.ndarray) ->
     return np.column_stack([np.ones(len(x)), (x - mean) / scale]) @ coefficients
 
 
+def _make_neural_model(kind: str, input_size: int, hidden_size: int) -> Any:
+    import torch
+    from torch import nn
+
+    class LSTMModel(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.encoder = nn.LSTM(input_size, hidden_size, batch_first=True)
+            self.head = nn.Linear(hidden_size, 1)
+
+        def forward(self, values: Any) -> Any:
+            encoded, _ = self.encoder(values)
+            return self.head(encoded[:, -1]).squeeze(-1)
+
+    class TCNModel(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.network = nn.Sequential(
+                nn.Conv1d(input_size, hidden_size, kernel_size=3, padding=2),
+                nn.GELU(),
+                nn.Conv1d(hidden_size, hidden_size, kernel_size=3, padding=2),
+                nn.GELU(),
+            )
+            self.head = nn.Linear(hidden_size, 1)
+
+        def forward(self, values: Any) -> Any:
+            encoded = self.network(values.transpose(1, 2))[:, :, : values.shape[1]]
+            return self.head(encoded[:, :, -1]).squeeze(-1)
+
+    class TransformerModel(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.projection = nn.Linear(input_size, hidden_size)
+            layer = nn.TransformerEncoderLayer(
+                d_model=hidden_size,
+                nhead=4 if hidden_size % 4 == 0 else 1,
+                dim_feedforward=hidden_size * 2,
+                dropout=0.0,
+                batch_first=True,
+                activation="gelu",
+            )
+            self.encoder = nn.TransformerEncoder(layer, num_layers=1)
+            self.head = nn.Linear(hidden_size, 1)
+
+        def forward(self, values: Any) -> Any:
+            length = values.shape[1]
+            mask = torch.triu(
+                torch.ones(length, length, dtype=torch.bool, device=values.device),
+                diagonal=1,
+            )
+            encoded = self.encoder(self.projection(values), mask=mask)
+            return self.head(encoded[:, -1]).squeeze(-1)
+
+    if kind == "lstm":
+        return LSTMModel()
+    if kind == "tcn":
+        return TCNModel()
+    if kind == "transformer":
+        return TransformerModel()
+    raise ValueError(f"Unknown neural model: {kind}")
+
+
+def _fit_neural_model(
+    kind: str,
+    x: np.ndarray,
+    y: np.ndarray,
+    hidden_size: int,
+    learning_rate: float,
+    weight_decay: float,
+    epochs: int,
+) -> tuple[Any, np.ndarray, np.ndarray, Any]:
+    import torch
+
+    torch.manual_seed(2026)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(2026)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    flat = x.reshape(-1, x.shape[-1])
+    mean = flat.mean(axis=0)
+    scale = flat.std(axis=0)
+    scale[scale < 1e-8] = 1.0
+    normalized = (x - mean) / scale
+    model = _make_neural_model(kind, x.shape[-1], int(hidden_size)).to(device)
+    values = torch.as_tensor(normalized, dtype=torch.float32, device=device)
+    targets = torch.as_tensor(y, dtype=torch.float32, device=device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=float(learning_rate), weight_decay=float(weight_decay))
+    loss_fn = torch.nn.SmoothL1Loss()
+    model.train()
+    for _ in range(int(epochs)):
+        optimizer.zero_grad(set_to_none=True)
+        loss = loss_fn(model(values), targets)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+    model.eval()
+    return model, mean, scale, device
+
+
+def _walk_forward_neural(
+    kind: str,
+    features: pd.DataFrame,
+    feature_columns: list[str],
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    hidden_size: int,
+    learning_rate: float,
+    weight_decay: float,
+    epochs: int,
+    context: int,
+    use_onchain: bool,
+) -> pd.DataFrame:
+    import torch
+
+    selected_features = [c for c in feature_columns if use_onchain or not c.startswith("onchain_")]
+    evaluation = config["evaluation"]
+    train_start = pd.Timestamp(evaluation["train_start"])
+    train_end = pd.Timestamp(evaluation["train_end"]) if evaluation.get("train_end") else pd.Timestamp.max
+    validation_end = pd.Timestamp(evaluation["validation_end"]) if evaluation.get("validation_end") else pd.Timestamp.max
+    min_train_days = int(evaluation["min_train_days"])
+    refit_sessions = int(evaluation["refit_sessions"])
+    embargo = int(evaluation.get("embargo_sessions", 1))
+    context = int(context)
+    rows: list[dict[str, Any]] = []
+    for asset in config["data"]["assets"]:
+        asset_rows = features[features["asset"].eq(asset)].sort_values("date").copy()
+        asset_dates = pd.DatetimeIndex(asset_rows["date"])
+        values = asset_rows[selected_features].to_numpy(dtype=float)
+        labels = asset_rows["label"].to_numpy(dtype=float)
+        label_end_dates = pd.DatetimeIndex(asset_rows["label_end_date"])
+        sequences = np.zeros((len(asset_rows), context, len(selected_features)), dtype=np.float32)
+        valid_sequences = np.zeros(len(asset_rows), dtype=bool)
+        for position in range(context - 1, len(asset_rows)):
+            window = values[position - context + 1 : position + 1]
+            if np.isfinite(window).all():
+                sequences[position] = window.astype(np.float32)
+                valid_sequences[position] = True
+        model_state: tuple[Any, np.ndarray, np.ndarray, Any] | None = None
+        last_fit_index = -refit_sessions
+        for signal_index, signal_date in enumerate(signal_dates):
+            current = asset_rows[asset_rows["date"].eq(signal_date)]
+            if current.empty:
+                continue
+            asset_position = asset_dates.get_loc(signal_date)
+            if signal_index - last_fit_index >= refit_sessions or model_state is None:
+                cutoff_position = asset_position - embargo
+                if cutoff_position <= 0:
+                    continue
+                label_cutoff = asset_dates[cutoff_position]
+                training_end = train_end if signal_date <= validation_end else signal_date
+                eligible = (
+                    (asset_dates >= train_start)
+                    & (asset_dates < signal_date)
+                    & (asset_dates <= training_end)
+                    & (label_end_dates < label_cutoff)
+                    & np.isfinite(labels)
+                    & valid_sequences
+                )
+                positions = np.flatnonzero(eligible)
+                if len(positions) >= min_train_days:
+                    model_state = _fit_neural_model(
+                        kind,
+                        sequences[positions],
+                        labels[positions],
+                        hidden_size,
+                        learning_rate,
+                        weight_decay,
+                        epochs,
+                    )
+                    last_fit_index = signal_index
+            if model_state is None or not valid_sequences[asset_position]:
+                continue
+            model, mean, scale, device = model_state
+            current_sequence = (sequences[asset_position].astype(float) - mean) / scale
+            tensor = torch.as_tensor(current_sequence[None, ...], dtype=torch.float32, device=device)
+            with torch.no_grad():
+                prediction = float(model(tensor).detach().cpu().item())
+            rows.append(
+                {
+                    "date": signal_date,
+                    "asset": asset,
+                    "prediction": prediction,
+                    "positive": prediction > 0.0,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def walk_forward_lstm(
+    features: pd.DataFrame,
+    feature_columns: list[str],
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    hidden_size: int = 32,
+    learning_rate: float = 0.001,
+    weight_decay: float = 0.0001,
+    epochs: int = 4,
+    context: int = 32,
+    use_onchain: bool = False,
+) -> pd.DataFrame:
+    return _walk_forward_neural(
+        "lstm", features, feature_columns, signal_dates, config,
+        hidden_size, learning_rate, weight_decay, epochs, context, use_onchain,
+    )
+
+
+def walk_forward_tcn(
+    features: pd.DataFrame,
+    feature_columns: list[str],
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    hidden_size: int = 32,
+    learning_rate: float = 0.001,
+    weight_decay: float = 0.0001,
+    epochs: int = 4,
+    context: int = 32,
+    use_onchain: bool = False,
+) -> pd.DataFrame:
+    return _walk_forward_neural(
+        "tcn", features, feature_columns, signal_dates, config,
+        hidden_size, learning_rate, weight_decay, epochs, context, use_onchain,
+    )
+
+
+def walk_forward_transformer(
+    features: pd.DataFrame,
+    feature_columns: list[str],
+    signal_dates: pd.DatetimeIndex,
+    config: dict[str, Any],
+    hidden_size: int = 32,
+    learning_rate: float = 0.001,
+    weight_decay: float = 0.0001,
+    epochs: int = 4,
+    context: int = 32,
+    use_onchain: bool = False,
+) -> pd.DataFrame:
+    return _walk_forward_neural(
+        "transformer", features, feature_columns, signal_dates, config,
+        hidden_size, learning_rate, weight_decay, epochs, context, use_onchain,
+    )
+
+
 def walk_forward_xgboost(
     features: pd.DataFrame,
     feature_columns: list[str],

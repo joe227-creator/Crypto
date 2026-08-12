@@ -181,6 +181,16 @@ def _run_optuna(
                 "threshold": trial.suggest_float("threshold", 0.0, 0.03),
                 "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
             }
+        elif mode in {"lstm", "tcn", "transformer"}:
+            params = {
+                "hidden_size": trial.suggest_int("hidden_size", 16, 64, step=16),
+                "learning_rate": trial.suggest_float("learning_rate", 0.0003, 0.01, log=True),
+                "weight_decay": trial.suggest_float("weight_decay", 0.000001, 0.1, log=True),
+                "epochs": trial.suggest_int("epochs", 2, 6),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "context": int(config.get("strategy", {}).get("params", {}).get("context", 32)),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", False)),
+            }
         elif mode == "ridge_covariance":
             params = {
                 "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
@@ -405,7 +415,7 @@ def main() -> int:
     _write_json(artifact_dir / "foundation_availability.json", availability)
 
     optuna_result: dict[str, Any] | None = None
-    if bool(config.get("optuna", {}).get("enabled", False)) and mode in {"ridge", "ridge_covariance", "ridge_label_clip", "ridge_adaptive_refit", "ridge_residual_gate", "ridge_residual_size", "ridge_conformal_gate", "ridge_adaptive_covariance", "ridge_ar_blend", "ar", "timesfm", "timesfm_confidence", "kronos", "hybrid_timesfm_ridge", "xgboost", "lightgbm"}:
+    if bool(config.get("optuna", {}).get("enabled", False)) and mode in {"ridge", "lstm", "tcn", "transformer", "ridge_covariance", "ridge_label_clip", "ridge_adaptive_refit", "ridge_residual_gate", "ridge_residual_size", "ridge_conformal_gate", "ridge_adaptive_covariance", "ridge_ar_blend", "ar", "timesfm", "timesfm_confidence", "kronos", "hybrid_timesfm_ridge", "xgboost", "lightgbm"}:
         optuna_result = _run_optuna(market, features, feature_columns, config, baseline_turnover, artifact_dir)
         params = {**params, **optuna_result["best_params"]}
     if mode == "stage0":
