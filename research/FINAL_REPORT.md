@@ -27,8 +27,9 @@ perpetual trade legs.
   as-of join, forward-fill limited to three days.
 - Signal timing: form at daily close, execute target at next daily open.
 - Costs: 10 bps fee plus 5 bps slippage per side. Costs never set to zero.
-- Signal threshold: fixed at `0.0`; Optuna tunes only branch-declared model
-  parameters on validation data.
+- Signal threshold: base strategies use fixed `0.0`; branches with an explicit
+  cost-aware filter declare threshold as a tunable parameter, searched only on
+  validation data by Optuna.
 - Labels: five-session forward simple return less fixed round-trip cost for
   classical models. Labels are used only when label end date is before the
   signal date minus one-session embargo.

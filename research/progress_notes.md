@@ -52,8 +52,8 @@ chosen for a new stacked bush.
 
 Earlier credit-recovery and pre-balanced launch plans are superseded by the
 answered local runs and balanced fair contract below. They are not active
-commands. Server compute remains blocked; fair tree is stopped and no parent is
-promoted.
+commands. Server compute remains blocked; later local robustness work promoted
+adaptive-refit Ridge as research parent.
 
 ## Local OpenResearch Execution
 

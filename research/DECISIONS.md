@@ -15,9 +15,10 @@ baseline turnover reference computed from 50/50 BTC/ETH buy-and-hold. Signals
 form at close and execute at next open with 10 bps fees and 5 bps slippage per
 side. No model or Optuna trial can change these values.
 
-Signal threshold is fixed at `0.0`. Optuna tunes only branch-declared model
-parameters on validation; threshold, labels, costs, score weights, and
-evaluation partitions remain fixed.
+Base signal threshold is fixed at `0.0`. Branches with an explicit cost-aware
+filter declare threshold as tunable; Optuna tunes only those branch-declared
+parameters on validation. Labels, costs, score weights, and evaluation
+partitions remain fixed.
 
 Embargo is session-based, not calendar-day-based: one-session purge excludes
 the immediately preceding market session even across weekends.
@@ -169,7 +170,7 @@ threshold remains the single research parent.
 
 ## Optuna Audit And Robustness Bush
 
-Ledger now contains 27 experiment rows, 23 rows with declared Optuna studies,
+Ledger now contains 32 experiment rows, 28 rows with declared Optuna studies,
 and every declared study records eight trials. Current and new local SQLite
 artifacts independently contain eight completed trials; historical branch
 databases were overwritten or not retained, so ledger rows remain the only

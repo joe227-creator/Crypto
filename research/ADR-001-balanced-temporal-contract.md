@@ -30,7 +30,8 @@ Use one balanced chronological contract for the fair bush:
 - Labels: five-session forward simple return less fixed round-trip cost.
 - Embargo: one market session between label end and signal date.
 - Score: fixed `Research_score`; 126-session complete non-overlapping windows;
-  252-session annualized Sharpe; zero signal threshold.
+  252-session annualized Sharpe; base strategies use zero signal threshold,
+  while explicit cost-aware filter branches may declare threshold tuning.
 - Seeds: `11|22|33|44|55`; eight sequential validation-only Optuna trials where
   a branch declares tunable parameters; command `bash measure.sh`.
 
