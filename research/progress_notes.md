@@ -283,3 +283,21 @@ Optuna wiring verified programmatically: every `suggest_*` parameter is consumed
 by the strategy, no orphan names, and stale `RUNNING` rows were cleared from the
 TimesFM and Kronos study databases. No child beat the residual-gate Ridge parent;
 the tree has plateaued.
+
+## Fitting And Execution Element Round (second pass)
+
+Five further children answered; all rejected.
+
+- EWMA recency-weighted Ridge fit: flat cash.
+- ElasticNet L1/L2 regularization: flat cash.
+- Huber robust loss fit: flat cash.
+- Execution-side abstention gate (hard skip above uncertainty cap):
+  validation `-0.0817`, frozen test `-0.3098`.
+- Prediction-drift trigger refit: flat cash.
+
+Sixteen consecutive child rejections across two rounds now confirm the residual-gate
+Ridge is locally optimal over every appended/ablated element tried. The only
+untried mechanism left is dynamic Kronos fine-tune, which carries three negative
+priors (zero-shot, static fine-tune, dynamic TimesFM fine-tune all failed) and was
+aborted by the user before answering. Research loop ends here: no untried valuable
+hypothesis remains.

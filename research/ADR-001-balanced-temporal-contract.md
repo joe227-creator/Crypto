@@ -110,6 +110,13 @@ dynamic TimesFM fine-tune both failed the frozen test; dynamic Kronos fine-tune
 was aborted before an answer. Optuna wiring verified clean for every branch. No
 child beat the parent, confirming the accepted contract while the tree plateaus.
 
+A second fitting-and-execution round answered five more children, all rejected:
+EWMA recency weighting, ElasticNet, Huber loss, execution-side abstention, and
+drift-trigger refit. Sixteen consecutive child rejections confirm residual-gate
+Ridge as locally optimal under the contract. Dynamic Kronos fine-tune remains
+provisional (user-aborted) with three negative priors; the research loop ends
+here. Contract unchanged.
+
 ## Evidence Gaps
 
 Promoted candidate has one positive and three zero-return frozen-test windows.

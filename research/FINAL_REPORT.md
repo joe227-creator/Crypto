@@ -391,3 +391,15 @@ robustness gaps (one positive frozen-test window, sharp multiplier sensitivity,
 deterministic seeds) unchanged. No untried hypothesis worth further compute
 remains on this direction. Recommendation stands: promote nothing to
 deployment, paper-trade nothing.
+
+## Fitting And Execution Element Round (Final)
+
+A second round answered five more children, all rejected: EWMA recency-weighted
+Ridge fit, ElasticNet regularization, and Huber robust loss each collapsed to
+flat cash; execution-side abstention gate scored validation `-0.0817`, frozen
+test `-0.3098`; prediction-drift trigger refit collapsed to flat cash. Sixteen
+consecutive child rejections confirm residual-gate Ridge as locally optimal.
+Dynamic Kronos fine-tune remains the only untried mechanism; its three negative
+priors (zero-shot, static fine-tune, dynamic TimesFM fine-tune) make it not
+worth the compute, and it was user-aborted before answering. The research loop
+terminates here under the stop rule.

@@ -360,6 +360,89 @@ def build_targets(
         )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
         raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_gate_abstain":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+        )
+        predictions = _apply_uncertainty_gate(
+            predictions, float(params.get("max_uncertainty", 0.0))
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_gate_trigger":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+            refit_trigger=float(params.get("refit_trigger", 0.01)),
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_gate_ewma":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+            sample_weight_halflife=int(params.get("halflife_sessions", 250)),
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_gate_elasticnet":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+            l1_ratio=float(params.get("l1_ratio", 0.5)),
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_gate_huber":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+            huber_epsilon=float(params.get("huber_epsilon", 0.1)),
+        )
+        predictions = _residual_gate(
+            predictions,
+            float(params.get("uncertainty_multiplier", 0.0)),
+        )
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
     elif mode == "ridge_residual_gate_rolling":
         predictions = walk_forward_ridge(
             features,

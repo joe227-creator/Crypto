@@ -240,3 +240,13 @@ Dynamic Kronos fine-tune was aborted before answering and remains provisional,
 deemed low-value given the static/zero-shot/dynamic-TimesFM failure chain.
 Optuna wiring was verified clean for every machine-learning branch. No child beat
 the residual-gate Ridge; the direction is exhausted and the tree plateaus.
+
+Second fitting-and-execution round answered five more children, all rejected:
+EWMA recency-weighted fit, ElasticNet regularization, and Huber robust loss all
+collapsed to flat cash; an execution-side abstention gate scored validation
+`-0.0817`, frozen test `-0.3098`; prediction-drift trigger refit collapsed to
+flat cash. Sixteen consecutive child rejections confirm the residual-gate Ridge
+as locally optimal over every element tried. The only untried mechanism, dynamic
+Kronos fine-tune, carries three negative priors and was user-aborted before an
+answer; it is recorded as provisional and not worth further compute. Loop ends:
+no untried valuable hypothesis remains.

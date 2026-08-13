@@ -573,15 +573,52 @@ def walk_forward_timesfm_ridge(
     )
 
 
-def _fit_ridge(x: np.ndarray, y: np.ndarray, alpha: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _fit_ridge(
+    x: np.ndarray,
+    y: np.ndarray,
+    alpha: float,
+    sample_weight: np.ndarray | None = None,
+    l1_ratio: float | None = None,
+    huber_epsilon: float | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     mean = x.mean(axis=0)
     scale = x.std(axis=0)
     scale[scale < 1e-12] = 1.0
     z = (x - mean) / scale
     design = np.column_stack([np.ones(len(z)), z])
-    penalty = np.eye(design.shape[1]) * float(alpha)
-    penalty[0, 0] = 0.0
-    coefficients = np.linalg.solve(design.T @ design + penalty, design.T @ y)
+    if l1_ratio is not None:
+        from sklearn.linear_model import ElasticNet
+
+        model = ElasticNet(
+            alpha=float(alpha),
+            l1_ratio=float(l1_ratio),
+            fit_intercept=True,
+            max_iter=10000,
+        )
+        model.fit(z, y)
+        coefficients = np.concatenate([[model.intercept_], model.coef_])
+    elif huber_epsilon is not None:
+        from sklearn.linear_model import SGDRegressor
+
+        model = SGDRegressor(
+            loss="huber",
+            epsilon=float(huber_epsilon),
+            alpha=float(alpha),
+            penalty="l2",
+            fit_intercept=True,
+            max_iter=5000,
+            tol=1e-4,
+            random_state=2026,
+        )
+        model.fit(z, y)
+        coefficients = np.concatenate([np.atleast_1d(model.intercept_), model.coef_])
+    else:
+        weights = np.ones(len(design)) if sample_weight is None else np.asarray(sample_weight, dtype=float)
+        weighted_design = design * np.sqrt(weights)[:, None]
+        weighted_y = y * np.sqrt(weights)
+        penalty = np.eye(design.shape[1]) * float(alpha)
+        penalty[0, 0] = 0.0
+        coefficients = np.linalg.solve(weighted_design.T @ weighted_design + penalty, weighted_design.T @ weighted_y)
     return coefficients, mean, scale
 
 
@@ -1064,6 +1101,10 @@ def walk_forward_ridge(
     uncertainty_quantile: float = 0.9,
     uncertainty_estimator: str = "std",
     window_sessions: int | None = None,
+    sample_weight_halflife: int | None = None,
+    l1_ratio: float | None = None,
+    huber_epsilon: float | None = None,
+    refit_trigger: float | None = None,
 ) -> pd.DataFrame:
     """Predict each asset using only labels ending before current signal date."""
     selected_features = [c for c in feature_columns if use_onchain or not c.startswith("onchain_")]
@@ -1081,11 +1122,21 @@ def walk_forward_ridge(
         model: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
         uncertainty = 0.0
         last_fit_index = -refit_sessions
+        recent: list[float] = []
         for signal_index, signal_date in enumerate(signal_dates):
             current = asset_rows[asset_rows["date"].eq(signal_date)]
             if current.empty:
                 continue
-            if signal_index - last_fit_index >= refit_sessions or model is None:
+            should_refit = signal_index - last_fit_index >= refit_sessions or model is None
+            if (
+                refit_trigger is not None
+                and model is not None
+                and len(recent) >= 21
+                and signal_index - last_fit_index >= 5
+                and float(np.std(recent[-21:], ddof=0)) > float(refit_trigger)
+            ):
+                should_refit = True
+            if should_refit:
                 asset_position = asset_dates.get_loc(signal_date)
                 cutoff_position = asset_position - embargo
                 if cutoff_position <= 0:
@@ -1116,7 +1167,21 @@ def walk_forward_ridge(
                     y = fit_train["label"].to_numpy(dtype=float)
                     if label_clip is not None:
                         y = np.clip(y, -float(label_clip), float(label_clip))
-                    model = _fit_ridge(x, y, alpha)
+                    sample_weight = None
+                    if sample_weight_halflife is not None and int(sample_weight_halflife) > 0:
+                        ages = (signal_date - fit_train["date"]).dt.days.to_numpy(dtype=float)
+                        sample_weight = 0.5 ** (ages / float(sample_weight_halflife))
+                    if sample_weight is None and l1_ratio is None and huber_epsilon is None:
+                        model = _fit_ridge(x, y, alpha)
+                    else:
+                        model = _fit_ridge(
+                            x,
+                            y,
+                            alpha,
+                            sample_weight=sample_weight,
+                            l1_ratio=l1_ratio,
+                            huber_epsilon=huber_epsilon,
+                        )
                     if not calibration.empty:
                         calibration_x = calibration[selected_features].to_numpy(dtype=float)
                         calibration_y = calibration["label"].to_numpy(dtype=float)
@@ -1139,6 +1204,7 @@ def walk_forward_ridge(
             if not np.isfinite(x_now).all():
                 continue
             prediction = float(_predict(model, x_now)[0])
+            recent.append(prediction)
             rows.append(
                 {
                     "date": signal_date,

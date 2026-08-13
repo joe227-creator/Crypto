@@ -237,6 +237,50 @@ def _run_optuna(
                 "threshold": trial.suggest_float("threshold", 0.0, 0.03),
                 "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
             }
+        elif mode == "ridge_residual_gate_abstain":
+            params = {
+                "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
+                "refit_sessions": trial.suggest_int("refit_sessions", 5, 90),
+                "max_uncertainty": trial.suggest_float("max_uncertainty", 0.02, 0.30),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
+            }
+        elif mode == "ridge_residual_gate_trigger":
+            params = {
+                "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
+                "refit_sessions": trial.suggest_int("refit_sessions", 5, 90),
+                "refit_trigger": trial.suggest_float("refit_trigger", 0.005, 0.05),
+                "uncertainty_multiplier": trial.suggest_float("uncertainty_multiplier", 0.0, 3.0),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
+            }
+        elif mode == "ridge_residual_gate_ewma":
+            params = {
+                "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
+                "refit_sessions": trial.suggest_int("refit_sessions", 5, 90),
+                "halflife_sessions": trial.suggest_int("halflife_sessions", 60, 1200),
+                "uncertainty_multiplier": trial.suggest_float("uncertainty_multiplier", 0.0, 3.0),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
+            }
+        elif mode == "ridge_residual_gate_elasticnet":
+            params = {
+                "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
+                "refit_sessions": trial.suggest_int("refit_sessions", 5, 90),
+                "l1_ratio": trial.suggest_float("l1_ratio", 0.0, 1.0),
+                "uncertainty_multiplier": trial.suggest_float("uncertainty_multiplier", 0.0, 3.0),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
+            }
+        elif mode == "ridge_residual_gate_huber":
+            params = {
+                "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
+                "refit_sessions": trial.suggest_int("refit_sessions", 5, 90),
+                "huber_epsilon": trial.suggest_float("huber_epsilon", 0.02, 0.30, log=True),
+                "uncertainty_multiplier": trial.suggest_float("uncertainty_multiplier", 0.0, 3.0),
+                "threshold": trial.suggest_float("threshold", 0.0, 0.03),
+                "use_onchain": bool(config.get("strategy", {}).get("params", {}).get("use_onchain", True)),
+            }
         elif mode == "ridge_residual_gate_rolling":
             params = {
                 "alpha": trial.suggest_float("alpha", 0.01, 100.0, log=True),
@@ -548,7 +592,7 @@ def main() -> int:
     _write_json(artifact_dir / "foundation_availability.json", availability)
 
     optuna_result: dict[str, Any] | None = None
-    if bool(config.get("optuna", {}).get("enabled", False)) and mode in {"ridge", "lstm", "tcn", "transformer", "ridge_covariance", "ridge_label_clip", "ridge_adaptive_refit", "ridge_residual_gate", "ridge_residual_size", "ridge_residual_gate_momentum", "ridge_residual_gate_momentum_z", "ridge_residual_gate_scaled", "ridge_residual_gate_mad", "ridge_residual_gate_rolling", "xgboost_residual_gate", "lstm_onchain", "lstm_residual_gate", "lstm_residual_gate_norm", "ridge_lstm_blend", "ridge_conformal_gate", "ridge_adaptive_covariance", "ridge_ar_blend", "ar", "timesfm", "timesfm_finetune", "timesfm_finetune_static", "timesfm_confidence", "kronos", "kronos_finetune", "kronos_finetune_static", "hybrid_timesfm_ridge", "xgboost", "lightgbm"}:
+    if bool(config.get("optuna", {}).get("enabled", False)) and mode in {"ridge", "lstm", "tcn", "transformer", "ridge_covariance", "ridge_label_clip", "ridge_adaptive_refit", "ridge_residual_gate", "ridge_residual_size", "ridge_residual_gate_momentum", "ridge_residual_gate_momentum_z", "ridge_residual_gate_scaled", "ridge_residual_gate_mad", "ridge_residual_gate_rolling", "ridge_residual_gate_ewma", "ridge_residual_gate_elasticnet", "ridge_residual_gate_huber", "ridge_residual_gate_abstain", "ridge_residual_gate_trigger", "xgboost_residual_gate", "lstm_onchain", "lstm_residual_gate", "lstm_residual_gate_norm", "ridge_lstm_blend", "ridge_conformal_gate", "ridge_adaptive_covariance", "ridge_ar_blend", "ar", "timesfm", "timesfm_finetune", "timesfm_finetune_static", "timesfm_confidence", "kronos", "kronos_finetune", "kronos_finetune_static", "hybrid_timesfm_ridge", "xgboost", "lightgbm"}:
         optuna_result = _run_optuna(market, features, feature_columns, config, baseline_turnover, artifact_dir)
         params = {**params, **optuna_result["best_params"]}
     if mode == "stage0":
