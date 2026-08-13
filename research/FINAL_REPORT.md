@@ -411,8 +411,11 @@ repair run completed 4 of 8 Optuna trials before a second user interruption;
 all four scored catastrophic validation values (`-0.8237` to `-1.0100`), and TPE
 re-suggested the same two parameter combinations so the completed trials span
 the search. Recorded as answered on partial evidence (precedent: static Kronos
-at 6 of 8 trials) and rejected. This closes the tree: zero-shot and fine-tuned
-(static and dynamic) foundation models, classical models, neural models, tree
-models, and every fitting, feature, gate, and execution element tried all lose
-to residual-gate Ridge. Research loop complete; no untried valuable hypothesis
-remains.
+at 6 of 8 trials) and rejected.
+
+A third regulation/execution round answered three further mechanisms, all rejected
+against the residual-gate Ridge parent: regime-conditioned gating (validation `-0.0167`,
+frozen test `-0.1200`), vol-target scaling (flat cash, `-0.1200` on both slices),
+and a 3-model ensemble of Ridge (gated) + LSTM + TCN (validation `-0.0377`,
+frozen test `-0.1200`). Nineteen consecutive child rejections now close the tree.
+No untried valuable hypothesis remains.

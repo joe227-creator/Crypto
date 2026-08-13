@@ -392,6 +392,109 @@ def build_targets(
         )
         threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
         raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_lstm_tcn_ensemble":
+        ridge = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+        )
+        ridge = _residual_gate(ridge, float(params.get("uncertainty_multiplier", 0.0)))
+        lstm = walk_forward_lstm(
+            features,
+            feature_columns,
+            dates,
+            config,
+            hidden_size=int(params.get("hidden_size", 32)),
+            learning_rate=float(params.get("learning_rate", 0.001)),
+            weight_decay=float(params.get("weight_decay", 0.0001)),
+            epochs=int(params.get("epochs", 4)),
+            context=int(params.get("context", 32)),
+            use_onchain=bool(params.get("use_onchain", False)),
+        )
+        tcn = walk_forward_tcn(
+            features,
+            feature_columns,
+            dates,
+            config,
+            hidden_size=int(params.get("hidden_size", 32)),
+            learning_rate=float(params.get("learning_rate", 0.001)),
+            weight_decay=float(params.get("weight_decay", 0.0001)),
+            epochs=int(params.get("epochs", 4)),
+            context=int(params.get("context", 32)),
+            use_onchain=bool(params.get("use_onchain", False)),
+        )
+        rw = float(params.get("ridge_weight", 0.5))
+        lw = float(params.get("lstm_weight", 0.25))
+        tw = max(0.0, 1.0 - rw - lw)
+        # blend ridge+lstm then with tcn
+        tmp = _blend_ridge_lstm(ridge, lstm, rw / max(rw + lw, 1e-9) if (rw + lw) > 0 else 0.5)
+        # tmp currently is ridge-lstm blend; need to blend with tcn weighted by tw
+        if not tmp.empty and not tcn.empty:
+            left = tmp[["date", "asset", "prediction"]].rename(columns={"prediction": "rl_pred"})
+            right = tcn[["date", "asset", "prediction"]].rename(columns={"prediction": "tcn_pred"})
+            merged = left.merge(right, on=["date", "asset"], how="inner")
+            merged["prediction"] = (1.0 - tw) * merged["rl_pred"] + tw * merged["tcn_pred"]
+            merged["positive"] = merged["prediction"] > 0.0
+            predictions = merged[["date", "asset", "prediction", "positive"]]
+        else:
+            predictions = tmp
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_gate_regime":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+        )
+        # regime-conditioned gate: high vol uses high multiplier, low vol uses low
+        if not predictions.empty and "uncertainty" in predictions:
+            # attach vol_20 regime flag per (date,asset)
+            feat_vol = features[["date", "asset", "vol_20"]].copy()
+            feat_vol["date"] = pd.to_datetime(feat_vol["date"])
+            predictions = predictions.merge(feat_vol, on=["date", "asset"], how="left")
+            # per-date median vol threshold
+            med = predictions.groupby("date")["vol_20"].transform("median")
+            high_mask = predictions["vol_20"] > med
+            m_low = float(params.get("uncertainty_multiplier_low", 0.1))
+            m_high = float(params.get("uncertainty_multiplier_high", 0.5))
+            gated = predictions.copy()
+            gated["prediction"] = gated["prediction"] - np.where(high_mask, m_high, m_low) * gated["uncertainty"]
+            gated["positive"] = gated["prediction"] > 0.0
+            predictions = gated[["date", "asset", "prediction", "positive", "uncertainty"]]
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
+    elif mode == "ridge_residual_gate_vol_target":
+        predictions = walk_forward_ridge(
+            features,
+            feature_columns,
+            dates,
+            config,
+            alpha=float(params.get("alpha", 10.0)),
+            use_onchain=bool(params.get("use_onchain", True)),
+            refit_sessions=int(params.get("refit_sessions", 21)),
+        )
+        predictions = _residual_gate(predictions, float(params.get("uncertainty_multiplier", 0.0)))
+        # vol-target scaling
+        if not predictions.empty:
+            feat_vol = features[["date", "asset", "vol_60"]].copy()
+            feat_vol["date"] = pd.to_datetime(feat_vol["date"])
+            predictions = predictions.merge(feat_vol, on=["date", "asset"], how="left")
+            tgt = float(params.get("target_vol", 0.4))
+            # vol_60 is annualized; scale prediction by tgt/vol, clip 0.2-3x
+            scale = (tgt / predictions["vol_60"].clip(lower=0.1)).clip(lower=0.2, upper=3.0).fillna(1.0)
+            predictions["prediction"] = predictions["prediction"] * scale
+            predictions["positive"] = predictions["prediction"] > 0.0
+            predictions = predictions[["date", "asset", "prediction", "positive", "uncertainty"]]
+        threshold = float(params.get("threshold", FIXED_SIGNAL_THRESHOLD))
+        raw = _equal_positive(predictions, threshold=threshold)
     elif mode == "ridge_residual_gate_ewma":
         predictions = walk_forward_ridge(
             features,

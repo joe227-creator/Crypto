@@ -580,10 +580,17 @@ def _fit_ridge(
     sample_weight: np.ndarray | None = None,
     l1_ratio: float | None = None,
     huber_epsilon: float | None = None,
+    norm_mean: np.ndarray | None = None,
+    norm_scale: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    mean = x.mean(axis=0)
-    scale = x.std(axis=0)
-    scale[scale < 1e-12] = 1.0
+    if norm_mean is not None and norm_scale is not None:
+        mean = np.asarray(norm_mean, dtype=float)
+        scale = np.asarray(norm_scale, dtype=float)
+        scale[scale < 1e-12] = 1.0
+    else:
+        mean = x.mean(axis=0)
+        scale = x.std(axis=0)
+        scale[scale < 1e-12] = 1.0
     z = (x - mean) / scale
     design = np.column_stack([np.ones(len(z)), z])
     if l1_ratio is not None:

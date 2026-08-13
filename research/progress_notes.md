@@ -315,3 +315,20 @@ span the whole search. Dynamic fine-tuning fails exactly like static
 recorded as answered under the 4-of-8 partial-evidence precedent; rejected. The
 research tree is now fully explored: every training, fitting, and execution
 element tried loses to residual-gate Ridge.
+
+## Third Regulation And Execution Round
+
+Three further children answered with full 8-trial Optuna studies; all rejected
+against residual-gate Ridge parent.
+
+- Regime-conditioned gate (low-vol vs high-vol multiplier, keyed on `vol_20`
+  median): validation `-0.0167` (end 83729), frozen test `-0.1200`.
+- Vol-target scaling (target volatility 0.2–0.8 on gated predictions via
+  `target_vol/vol_60`, clipped 0.2–3x): validation `-0.1200` (flat cash), frozen
+  test `-0.1200`.
+- 3-model ensemble (Ridge gated + LSTM + TCN, learned `ridge_weight` and
+  `lstm_weight`): validation `-0.0377`, frozen test `-0.1200`.
+
+Nineteen consecutive child rejections now close the tree. No untried valuable
+hypothesis of the ensemble, regime-conditioning, or volatility-targeting
+families remains.

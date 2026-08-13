@@ -259,4 +259,12 @@ node is recorded as answered on this partial evidence (precedent: static Kronos
 with 6 of 8 trials) and rejected. Dynamic fine-tuning does not rescue Kronos,
 matching static, zero-shot, and dynamic TimesFM outcomes. Every training,
 fitting, and execution element tried is now rejected against residual-gate
-Ridge. Loop closed.
+Ridge.
+
+A third regulation/execution round then answered three further mechanisms, all
+rejected against the residual-gate Ridge parent: regime-conditioned gating
+(validation `-0.0167`, frozen test `-0.1200`), vol-target scaling (flat cash at
+`-0.1200`), and a 3-model ensemble of Ridge (gated) + LSTM + TCN (validation
+`-0.0377`, frozen test `-0.1200`). Nineteen consecutive child rejections across
+three rounds confirm the parent as locally optimal. Loop closed with no untried
+valuable hypothesis of the ensemble, regime, or volatility families remaining.

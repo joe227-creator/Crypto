@@ -123,8 +123,12 @@ validation values (`-0.8237` to `-1.0100`); TPE re-suggested the same two
 parameter combinations, so the completed trials span the search. Recorded as
 answered on partial evidence and rejected. Dynamic fine-tuning does not rescue
 Kronos, matching static, zero-shot, and dynamic TimesFM outcomes. Every
-element tried is rejected against residual-gate Ridge; contract unchanged, loop
-closed.
+element tried is rejected against residual-gate Ridge; contract unchanged.
+
+A third regulation/execution round answered three further mechanisms, all rejected:
+regime-conditioned residual gate, vol-target scaling, and the 3-model ensemble
+(Ridge + LSTM + TCN). Nineteen consecutive child rejections confirm the
+residual-gate Ridge as locally optimal under the contract; loop closed.
 
 ## Evidence Gaps
 
