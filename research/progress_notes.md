@@ -301,3 +301,17 @@ untried mechanism left is dynamic Kronos fine-tune, which carries three negative
 priors (zero-shot, static fine-tune, dynamic TimesFM fine-tune all failed) and was
 aborted by the user before answering. Research loop ends here: no untried valuable
 hypothesis remains.
+
+## Dynamic Kronos Fine-Tune (Partial, Answered)
+
+Dynamic Kronos head fine-tune ran in detached repair mode: re-tune the Kronos
+dual token head every 21 sessions on trailing 128 causal OHLCV windows. Four of
+eight Optuna trials completed before the run was interrupted a second time; all
+four scored catastrophic validation values `-0.8237` to `-1.0100` (best
+`-0.8237` at context 256, lr `0.000851`, steps 1). TPE deterministically
+re-suggested the same two parameter combinations, so the four completed trials
+span the whole search. Dynamic fine-tuning fails exactly like static
+(`-0.7022`) and zero-shot Kronos, and like dynamic TimesFM (`-0.7170`). Verdict
+recorded as answered under the 4-of-8 partial-evidence precedent; rejected. The
+research tree is now fully explored: every training, fitting, and execution
+element tried loses to residual-gate Ridge.

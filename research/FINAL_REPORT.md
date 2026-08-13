@@ -403,3 +403,16 @@ Dynamic Kronos fine-tune remains the only untried mechanism; its three negative
 priors (zero-shot, static fine-tune, dynamic TimesFM fine-tune) make it not
 worth the compute, and it was user-aborted before answering. The research loop
 terminates here under the stop rule.
+
+## Dynamic Kronos Fine-Tune (Final Node)
+
+Dynamic Kronos head fine-tuning was the last untried mechanism. A detached
+repair run completed 4 of 8 Optuna trials before a second user interruption;
+all four scored catastrophic validation values (`-0.8237` to `-1.0100`), and TPE
+re-suggested the same two parameter combinations so the completed trials span
+the search. Recorded as answered on partial evidence (precedent: static Kronos
+at 6 of 8 trials) and rejected. This closes the tree: zero-shot and fine-tuned
+(static and dynamic) foundation models, classical models, neural models, tree
+models, and every fitting, feature, gate, and execution element tried all lose
+to residual-gate Ridge. Research loop complete; no untried valuable hypothesis
+remains.

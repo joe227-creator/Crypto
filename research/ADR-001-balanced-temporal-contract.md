@@ -117,6 +117,15 @@ Ridge as locally optimal under the contract. Dynamic Kronos fine-tune remains
 provisional (user-aborted) with three negative priors; the research loop ends
 here. Contract unchanged.
 
+Dynamic Kronos fine-tune was repaired and ran detached to 4 of 8 Optuna trials
+before a second interruption. All four completed trials scored catastrophic
+validation values (`-0.8237` to `-1.0100`); TPE re-suggested the same two
+parameter combinations, so the completed trials span the search. Recorded as
+answered on partial evidence and rejected. Dynamic fine-tuning does not rescue
+Kronos, matching static, zero-shot, and dynamic TimesFM outcomes. Every
+element tried is rejected against residual-gate Ridge; contract unchanged, loop
+closed.
+
 ## Evidence Gaps
 
 Promoted candidate has one positive and three zero-return frozen-test windows.

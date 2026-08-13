@@ -250,3 +250,13 @@ as locally optimal over every element tried. The only untried mechanism, dynamic
 Kronos fine-tune, carries three negative priors and was user-aborted before an
 answer; it is recorded as provisional and not worth further compute. Loop ends:
 no untried valuable hypothesis remains.
+
+Dynamic Kronos fine-tune was then repaired and ran detached to 4 of 8 Optuna
+trials before a second interruption. All four completed trials scored
+catastrophic validation values (`-0.8237` to `-1.0100`); TPE re-suggested the
+same two parameter combinations, so the completed trials span the search. The
+node is recorded as answered on this partial evidence (precedent: static Kronos
+with 6 of 8 trials) and rejected. Dynamic fine-tuning does not rescue Kronos,
+matching static, zero-shot, and dynamic TimesFM outcomes. Every training,
+fitting, and execution element tried is now rejected against residual-gate
+Ridge. Loop closed.
